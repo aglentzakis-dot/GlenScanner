@@ -80,6 +80,9 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
 #cam .shot.busy{opacity:.5}
 #cam .lastTh{width:56px;height:72px;border-radius:8px;border:2px solid #fff;background:#222 center/cover no-repeat;color:#fff;font-size:13px;display:flex;align-items:flex-end;justify-content:center;padding:0 0 2px;min-height:0}
 #cam .done{min-width:96px;background:#fff;color:#000}
+#cam .state{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#000b;color:#fff;font-size:14px;border-radius:14px;padding:6px 12px;z-index:2;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+#fRing{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;border:2px solid #FDD117;border-radius:50%;pointer-events:none;z-index:3}
+#fRing.go{animation:fr .8s ease-out}@keyframes fr{from{transform:scale(1.5);opacity:1}to{transform:scale(1);opacity:.2}}
 #cam .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .18s;z-index:3}
 
 /* περικοπή */
@@ -245,7 +248,7 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
     <details>
       <summary>❓ Οδηγός χρήσης</summary>
       <ul class="muted" style="padding-left:18px">
-        <li><b>Νέα σάρωση</b>: στόχευσε το έγγραφο· το κίτρινο πλαίσιο δείχνει τι βρήκε. Με την αυτόματη λήψη φωτογραφίζει μόνο του — γύρνα σελίδα και συνεχίζει. Πάτα <b>Τέλος</b> όταν τελειώσεις.</li>
+        <li><b>Νέα σάρωση</b>: στόχευσε το έγγραφο· το κίτρινο πλαίσιο δείχνει τι βρήκε. Πάτα πάνω στην εικόνα για εστίαση εκεί. Αν η εικόνα είναι θολή από κοντά, πάτα <b>🔄 Φακός</b> για άλλη κάμερα του κινητού.</li><li> Με την αυτόματη λήψη φωτογραφίζει μόνο του — γύρνα σελίδα και συνεχίζει. Πάτα <b>Τέλος</b> όταν τελειώσεις.</li>
         <li><b>Ταυτότητα / κάρτα</b>: φωτογράφισε μπροστά και πίσω· στο PDF μπαίνουν και οι δύο όψεις σε μία σελίδα Α4, σε πραγματικό μέγεθος.</li>
         <li><b>Βιβλίο</b>: φωτογράφισε ανοιχτό βιβλίο· οι δύο σελίδες χωρίζονται μόνες τους.</li>
         <li><b>✂️ Περικοπή</b>: σύρε τις 4 γωνίες· ο μεγεθυντικός φακός δείχνει ακριβώς πού είσαι. Η σελίδα ισιώνει μόνη της.</li>
@@ -329,11 +332,14 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
     <div class="top">
       <button id="cClose">✕</button>
       <div class="row" style="gap:6px">
+        <button id="cLens" class="hidden">🔄 Φακός</button>
         <button id="cAuto">⚡ Αυτόματα</button>
         <button id="cTorch" class="hidden">🔦</button>
       </div>
     </div>
     <div class="hint" id="cHint"></div>
+    <div class="state hidden" id="cState"></div>
+    <div id="fRing" class="hidden"></div>
   </div>
   <div class="modes" id="cModes">
     <button data-m="doc">Έγγραφο</button>
@@ -384,7 +390,7 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
 <script>window.EfarmogesMas||document.write('<script src="efarmoges-mas.js"><\/script>')</script>
 <script>
 'use strict';
-const VERSION='1.0';
+const VERSION='1.1';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 $('#ver').textContent='GlenApps · '+VERSION;$('#ver2').textContent=VERSION;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -453,30 +459,110 @@ const jpg=(c,q)=>c.toDataURL('image/jpeg',q||.88);
 async function fileToCanvas(f){const u=URL.createObjectURL(f);try{const i=await loadImg(u);return fit(i,2600)}finally{setTimeout(()=>URL.revokeObjectURL(u),2000)}}
 function rotated(src,deg){const[w,h]=dims(src);const r=deg%180!==0,c=cnv(r?h:w,r?w:h),x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(deg*Math.PI/180);x.drawImage(src,-w/2,-h/2);return c}
 
-// ---------- Εντοπισμός σελίδας (χωρίς εξωτερικές βιβλιοθήκες) ----------
-// Μικραίνει την εικόνα, ξεχωρίζει το φωτεινό, άχρωμο χαρτί από το φόντο (κατώφλι Otsu),
-// κρατά τη μεγαλύτερη περιοχή και βρίσκει τις 4 γωνίες της.
+// ---------- Εντοπισμός σελίδας v2 (χωρίς εξωτερικές βιβλιοθήκες) ----------
+// Δύο μέθοδοι που βαθμολογούνται με το ίδιο μέτρο:
+//  α) ευθείες ακμές (μετασχηματισμός Hough) → όλα τα τετράπλευρα από 2 «οριζόντιες» και 2 «κάθετες» γραμμές
+//  β) φωτεινή, άχρωμη περιοχή χαρτιού (κατώφλι Otsu)
+// Νικά το τετράπλευρο με τις πιο δυνατές ακμές σε όλη την περίμετρό του. Τα γράμματα μέσα στη σελίδα σβήνουν με θόλωμα.
 const FULL=[[0,0],[1,0],[1,1],[0,1]];
 const INSET=[[.04,.04],[.96,.04],[.96,.96],[.04,.96]];
 const detC=document.createElement('canvas');
-function detectQuad(src){
+function grayOf(src,maxSide){
   const[W,H]=dims(src);if(!W||!H)return null;
-  const k=Math.min(1,220/Math.max(W,H)),w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h;
+  const k=Math.min(1,maxSide/Math.max(W,H)),w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h;
   detC.width=w;detC.height=h;const x=detC.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
-  const d=x.getImageData(0,0,w,h).data;let v=new Float32Array(n);
-  for(let i=0;i<n;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);v[i]=(r*.299+g*.587+b*.114)-(mx-mn)*.7}
-  // θόλωμα (δύο περάσματα) για να σβήσουν τα γράμματα
-  for(let p=0;p<2;p++){const t=new Float32Array(n);
-    for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){let s=0,c=0;for(let dx=-2;dx<=2;dx++){const X=xx+dx;if(X>=0&&X<w){s+=v[yy*w+X];c++}}t[yy*w+xx]=s/c}
-    for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){let s=0,c=0;for(let dy=-2;dy<=2;dy++){const Y=yy+dy;if(Y>=0&&Y<h){s+=t[Y*w+xx];c++}}v[yy*w+xx]=s/c}}
-  // Otsu
+  const d=x.getImageData(0,0,w,h).data,g=new Float32Array(n),pv=new Float32Array(n);
+  for(let i=0;i<n;i++){const r=d[i*4],gg=d[i*4+1],b=d[i*4+2],mx=Math.max(r,gg,b),mn=Math.min(r,gg,b);g[i]=r*.299+gg*.587+b*.114;pv[i]=g[i]-(mx-mn)*.7}
+  return{g,pv,w,h,n};
+}
+function boxBlur(a,w,h,r,times){
+  let s=a,t=new Float32Array(a.length);
+  for(let it=0;it<times;it++){
+    for(let y=0;y<h;y++){let acc=0;const o=y*w;for(let x=-r;x<=r;x++)acc+=s[o+Math.min(w-1,Math.max(0,x))];
+      for(let x=0;x<w;x++){t[o+x]=acc/(2*r+1);acc+=s[o+Math.min(w-1,x+r+1)]-s[o+Math.max(0,x-r)]}}
+    const u=new Float32Array(a.length);
+    for(let x=0;x<w;x++){let acc=0;for(let y=-r;y<=r;y++)acc+=t[Math.min(h-1,Math.max(0,y))*w+x];
+      for(let y=0;y<h;y++){u[y*w+x]=acc/(2*r+1);acc+=t[Math.min(h-1,y+r+1)*w+x]-t[Math.max(0,y-r)*w+x]}}
+    s=u}
+  return s;
+}
+function sobel(g,w,h){
+  const n=w*h,mag=new Float32Array(n),gx=new Float32Array(n),gy=new Float32Array(n);let mx=0;
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;
+    const a=g[i-w-1],b=g[i-w],c=g[i-w+1],d=g[i-1],f=g[i+1],p=g[i+w-1],q=g[i+w],r=g[i+w+1];
+    const X=(c+2*f+r)-(a+2*d+p),Y=(p+2*q+r)-(a+2*b+c);gx[i]=X;gy[i]=Y;const m=Math.hypot(X,Y);mag[i]=m;if(m>mx)mx=m}
+  return{mag,gx,gy,mx};
+}
+// ευθείες με ψήφους κατά τη διεύθυνση της κλίσης (λιγότερος θόρυβος, πιο γρήγορα)
+function houghLines(E,w,h,maxLines){
+  const T=180,D=Math.ceil(Math.hypot(w,h)),R=2*D+1,acc=new Float32Array(T*R),cs=new Float32Array(T),sn=new Float32Array(T);
+  for(let t=0;t<T;t++){cs[t]=Math.cos(t*Math.PI/T);sn[t]=Math.sin(t*Math.PI/T)}
+  // κατώφλι: το 10% των πιο δυνατών ακμών
+  const hist=new Uint32Array(256);let cnt=0;for(let i=0;i<E.mag.length;i++){if(E.mag[i]>0){hist[Math.min(255,(E.mag[i]/E.mx*255)|0)]++;cnt++}}
+  let s=0,th=0;for(let b=255;b>=0;b--){s+=hist[b];if(s>cnt*.10){th=b/255*E.mx;break}}th=Math.max(th,E.mx*.08);
+  for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++){const i=y*w+x,m=E.mag[i];if(m<th)continue;
+    let a=Math.atan2(E.gy[i],E.gx[i]);if(a<0)a+=Math.PI;let t0=Math.round(a/Math.PI*T);
+    const wv=Math.min(m,E.mx*.6);
+    for(let dt=-5;dt<=5;dt++){let t=t0+dt,flip=1;if(t<0){t+=T;flip=-1}else if(t>=T){t-=T;flip=-1}
+      const r=Math.round(flip*(x*cs[t]+y*sn[t]))+D;if(r>=0&&r<R)acc[t*R+r]+=wv*(1-Math.abs(dt)/8)}}
+  // κορυφές με καταστολή γειτόνων
+  const out=[];const used=new Uint8Array(T*R);
+  const idx=[];for(let i=0;i<acc.length;i++)if(acc[i]>0)idx.push(i);idx.sort((a,b)=>acc[b]-acc[a]);
+  const top=acc[idx[0]]||0;
+  for(const i of idx){if(out.length>=maxLines||acc[i]<top*.12)break;if(used[i])continue;
+    const t=Math.floor(i/R),r=i%R-D;
+    for(let dt=-3;dt<=3;dt++)for(let dr=-Math.round(D*.015)-1;dr<=Math.round(D*.015)+1;dr++){let tt=t+dt,rr=r+dr;if(tt<0){tt+=T;rr=-rr}else if(tt>=T){tt-=T;rr=-rr}const j=tt*R+rr+D;if(j>=0&&j<acc.length)used[j]=1}
+    const th2=t*Math.PI/T;out.push({c:Math.cos(th2),s:Math.sin(th2),r,v:acc[i]})}
+  return out;
+}
+const isect=(a,b)=>{const det=a.c*b.s-a.s*b.c;if(Math.abs(det)<1e-6)return null;return[(a.r*b.s-a.s*b.r)/det,(a.c*b.r-a.r*b.c)/det]};
+// βαθμός τετραπλεύρου: πόσο δυνατές ακμές υπάρχουν κατά μήκος κάθε πλευράς (0..1)
+function quadScore(P,E,w,h,th,V){
+  let tot=0,minSide=1,sIn=0,sOut=0,nIO=0;const cx=P.reduce((s,p)=>s+p[0],0)/4,cy=P.reduce((s,p)=>s+p[1],0)/4,off=Math.max(3,Math.round(Math.max(w,h)*.015));
+  for(let k=0;k<4;k++){const a=P[k],b=P[(k+1)%4],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<4)return 0;
+    let nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L;const N=Math.max(8,Math.round(L/2));let hit=0,outN=0,dIn=0,dOut=0,dN=0;
+    // το κάθετο διάνυσμα να δείχνει προς το εσωτερικό
+    if(((a[0]+b[0])/2-cx)*nx+((a[1]+b[1])/2-cy)*ny>0){nx=-nx;ny=-ny}
+    for(let j=1;j<N;j++){const f=j/N,x=a[0]+(b[0]-a[0])*f,y=a[1]+(b[1]-a[1])*f;
+      if(x<2||y<2||x>w-3||y>h-3){outN++;continue}
+      let best=0;for(let o=-2;o<=2;o++){const X=Math.round(x+nx*o),Y=Math.round(y+ny*o);if(X<1||Y<1||X>=w-1||Y>=h-1)continue;const i=Y*w+X;
+        // η κλίση πρέπει να είναι κάθετη στην πλευρά
+        const m=E.mag[i];if(m<th)continue;const al=Math.abs(E.gx[i]*nx+E.gy[i]*ny)/m;if(al>.8)best=Math.max(best,Math.min(1,m/(th*2.5)))}
+      hit+=best;
+      if(V){const Xi=Math.round(x+nx*off),Yi=Math.round(y+ny*off),Xo=Math.round(x-nx*off),Yo=Math.round(y-ny*off);
+        if(Xi>=0&&Yi>=0&&Xi<w&&Yi<h&&Xo>=0&&Yo>=0&&Xo<w&&Yo<h){dIn+=V[Yi*w+Xi];dOut+=V[Yo*w+Xo];dN++}}}
+    if(dN){sIn+=dIn;sOut+=dOut;nIO+=dN}
+    const inN=N-1-outN,frac=inN>0?hit/inN:0;
+    // πλευρά έξω από το κάδρο: μικρή, ουδέτερη πίστωση
+    let sc=inN<(N-1)*.3?.5:frac*(inN/(N-1))+.5*(outN/(N-1));
+    // έξω πιο φωτεινό από μέσα = εσωτερική γραμμή της σελίδας (πίνακας, μπλοκ κειμένου), όχι η άκρη της
+    if(dN>4&&(dOut-dIn)/dN>10)sc*=.4;
+    tot+=sc;minSide=Math.min(minSide,sc)}
+  let base=tot/4*.75+minSide*.25;
+  // το εσωτερικό να ξεχωρίζει από το φόντο γύρω του
+  if(nIO>8){const c=(sIn-sOut)/nIO;base*=.55+.45*Math.max(0,Math.min(1,Math.abs(c)/35))}
+  return base;
+}
+function validQuad(P,w,h){
+  if(!convex(P))return false;
+  for(const[x,y]of P)if(x<-w*.12||y<-h*.12||x>w*1.12||y>h*1.12)return false;
+  const A=polyArea(P);if(A<w*h*.10)return false;
+  for(let k=0;k<4;k++){const a=P[(k+3)%4],b=P[k],c=P[(k+1)%4];const v1=[a[0]-b[0],a[1]-b[1]],v2=[c[0]-b[0],c[1]-b[1]];
+    const cos=(v1[0]*v2[0]+v1[1]*v2[1])/(Math.hypot(...v1)*Math.hypot(...v2)+1e-9);if(Math.abs(cos)>.6)return false}// γωνίες 53°–127°
+  return true;
+}
+function orderQuad(P){const c=[P.reduce((s,p)=>s+p[0],0)/4,P.reduce((s,p)=>s+p[1],0)/4];
+  const S=P.slice().sort((a,b)=>Math.atan2(a[1]-c[1],a[0]-c[0])-Math.atan2(b[1]-c[1],b[0]-c[0]));
+  // ξεκινά από την πάνω-αριστερή (μικρότερο x+y), δεξιόστροφα
+  let k=0;for(let i=1;i<4;i++)if(S[i][0]+S[i][1]<S[k][0]+S[k][1])k=i;return[0,1,2,3].map(i=>S[(k+i)%4])}
+// β) περιοχή χαρτιού (η παλιά μέθοδος, ως δεύτερη υποψήφια)
+function segQuad(G){
+  const{w,h,n}=G;const v=boxBlur(G.pv,w,h,2,2);
   const hist=new Float64Array(256);for(let i=0;i<n;i++)hist[Math.max(0,Math.min(255,v[i]|0))]++;
   let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=0,thr=128;
   for(let i=0;i<256;i++){wB+=hist[i];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=i*hist[i];const mB=sB/wB,mF=(sum-sB)/wF,b=wB*wF*(mB-mF)*(mB-mF);if(b>best){best=b;thr=i}}
-  let m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=v[i]>thr?1:0;
-  // διάβρωση: κόβει λεπτές «γέφυρες» με φωτεινό φόντο
-  const e=new Uint8Array(n);for(let yy=1;yy<h-1;yy++)for(let xx=1;xx<w-1;xx++){const i=yy*w+xx;e[i]=m[i]&m[i-1]&m[i+1]&m[i-w]&m[i+w]}
-  // μεγαλύτερη συνεχής περιοχή
+  const m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=v[i]>thr?1:0;
+  const e=new Uint8Array(n);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;e[i]=m[i]&m[i-1]&m[i+1]&m[i-w]&m[i+w]}
   const lab=new Int32Array(n),st=new Int32Array(n);let bestL=0,bestA=0,L=0;
   for(let i=0;i<n;i++){if(!e[i]||lab[i])continue;L++;let sp=0,a=0;st[sp++]=i;lab[i]=L;
     while(sp){const j=st[--sp];a++;const jx=j%w;
@@ -486,19 +572,79 @@ function detectQuad(src){
       if(j<n-w&&e[j+w]&&!lab[j+w]){lab[j+w]=L;st[sp++]=j+w}}
     if(a>bestA){bestA=a;bestL=L}}
   if(bestA<n*.1)return null;
-  let tl=[0,0,1e9],tr=[0,0,-1e9],br=[0,0,-1e9],bl=[0,0,1e9],cx=0,cy=0;
-  for(let i=0;i<n;i++){if(lab[i]!==bestL)continue;const X=i%w,Y=(i-X)/w;cx+=X;cy+=Y;
+  let tl=[0,0,1e9],tr=[0,0,-1e9],br=[0,0,-1e9],bl=[0,0,1e9];
+  for(let i=0;i<n;i++){if(lab[i]!==bestL)continue;const X=i%w,Y=(i-X)/w;
     if(X+Y<tl[2])tl=[X,Y,X+Y];if(X+Y>br[2])br=[X,Y,X+Y];if(X-Y>tr[2])tr=[X,Y,X-Y];if(X-Y<bl[2])bl=[X,Y,X-Y]}
-  cx/=bestA;cy/=bestA;
-  let q=[tl,tr,br,bl].map(([X,Y])=>{const dx=X-cx,dy=Y-cy,l=Math.hypot(dx,dy)||1;return[Math.max(0,Math.min(1,(X+.5+dx/l*1.5)/w)),Math.max(0,Math.min(1,(Y+.5+dy/l*1.5)/h))]});
-  const area=polyArea(q.map(([a,b])=>[a*w,b*h]));
-  if(area<bestA*.75||area>n*.985)return null;
-  // απορρίπτει πολύ στραβά τετράπλευρα
-  if(!convex(q))return null;
-  return q;
+  return[tl,tr,br,bl].map(([X,Y])=>[X+.5,Y+.5]);
+}
+// κύρια συνάρτηση: επιστρέφει γωνίες 0..1 (πάνω-αριστερά, πάνω-δεξιά, κάτω-δεξιά, κάτω-αριστερά) ή null
+function detectQuad(src,opt){
+  opt=opt||{};const G=grayOf(src,opt.size||300);if(!G)return null;const{w,h}=G;
+  const B=boxBlur(G.g,w,h,Math.max(1,Math.round(Math.max(w,h)/150)),3);
+  const E=sobel(B,w,h);if(E.mx<8)return null;const V=boxBlur(G.pv,w,h,1,2);
+  // κατώφλι «ακμής» για τη βαθμολόγηση
+  const th=E.mx*.10;
+  const lines=houghLines(E,w,h,60);
+  const Hl=[],Vl=[];for(const l of lines)(Math.abs(l.c)>Math.abs(l.s)?Vl:Hl).push(l);
+  // οι άκρες του κάδρου ως πιθανές πλευρές, για σελίδα που βγαίνει λίγο έξω από τη φωτογραφία
+  const BH=[{c:0,s:1,r:0},{c:0,s:1,r:h-1}],BV=[{c:1,s:0,r:0},{c:1,s:0,r:w-1}];
+  let best=null,bs=0;
+  const tryQ=(P,bonus)=>{if(!P||P.some(p=>!p))return;P=orderQuad(P);if(!validQuad(P,w,h))return;const s=quadScore(P,E,w,h,th,V)*(1+bonus)*(.85+.15*Math.sqrt(polyArea(P)/(w*h)));if(s>bs){bs=s;best=P}};
+  // α) οι πιο δυνατές γραμμές σε όλη την εικόνα
+  const nL=opt.fast?6:10,H1=Hl.slice(0,nL).concat(BH),V1=Vl.slice(0,nL).concat(BV);
+  for(let i=0;i<H1.length;i++)for(let j=i+1;j<H1.length;j++)for(let k=0;k<V1.length;k++)for(let l=k+1;l<V1.length;l++){
+    const a=H1[i],b=H1[j],c=V1[k],d=V1[l];tryQ([isect(a,c),isect(a,d),isect(b,d),isect(b,c)],0)}
+  // β) η περιοχή χαρτιού, και γραμμές κοντά σε κάθε πλευρά της (βοηθά σε φόντο με πολλές γραμμές)
+  const SQ=segQuad(G);
+  if(SQ){const Sq=orderQuad(SQ);tryQ(Sq,.03);
+    const near=k=>{const L=lineThrough(Sq[k],Sq[(k+1)%4]);const all=lines.concat(BH,BV);
+      return all.map(l=>{const dc=Math.abs(l.c*L.c+l.s*L.s);if(dc<.97)return null;const sg=Math.sign(l.c*L.c+l.s*L.s);const mx=(Sq[k][0]+Sq[(k+1)%4][0])/2,my=(Sq[k][1]+Sq[(k+1)%4][1])/2;
+        const dist=Math.abs(mx*l.c+my*l.s-l.r);return dist<Math.hypot(w,h)*.08?{l,dist}:null}).filter(Boolean).sort((a,b)=>a.dist-b.dist).slice(0,opt.fast?2:4).map(o=>o.l).concat([L])};
+    const N=[0,1,2,3].map(near);
+    for(const t of N[0])for(const r of N[1])for(const b of N[2])for(const l of N[3])tryQ([isect(l,t),isect(t,r),isect(r,b),isect(b,l)],0)}
+  if(!best||bs<(opt.min||.30))return null;
+  const q=best.map(([x,y])=>[Math.max(0,Math.min(1,x/w)),Math.max(0,Math.min(1,y/h))]);
+  // σχεδόν όλο το κάδρο = δεν βρέθηκε σελίδα (το χαρτί γεμίζει την εικόνα)
+  if(polyArea(q)>.97)return null;
+  q.score=bs;return q;
+}
+// ακριβής διόρθωση των άκρων σε μεγάλη εικόνα: για κάθε πλευρά ψάχνει κάθετα τη δυνατότερη ακμή και ταιριάζει ευθεία
+function refineQuad(src,q){
+  if(!q)return q;const G=grayOf(src,1400);if(!G)return q;const{w,h}=G;
+  const B=boxBlur(G.g,w,h,1,2),E=sobel(B,w,h);
+  const P=q.map(([x,y])=>[x*w,y*h]),R=Math.max(6,Math.round(Math.max(w,h)*.012)),lines=[];
+  for(let k=0;k<4;k++){const a=P[k],b=P[(k+1)%4],L=Math.hypot(b[0]-a[0],b[1]-a[1]),nx=-(b[1]-a[1])/L,ny=(b[0]-a[0])/L,pts=[];
+    for(let j=1;j<40;j++){const f=.08+.84*j/40,x=a[0]+(b[0]-a[0])*f,y=a[1]+(b[1]-a[1])*f;let bm=0,bo=0;
+      for(let o=-R;o<=R;o++){const X=Math.round(x+nx*o),Y=Math.round(y+ny*o);if(X<1||Y<1||X>=w-1||Y>=h-1)continue;const i=Y*w+X,m=E.mag[i];if(!m)continue;
+        const al=Math.abs(E.gx[i]*nx+E.gy[i]*ny)/m;const sc=m*al*al*(1-Math.abs(o)/(R*3));if(sc>bm){bm=sc;bo=o}}
+      if(bm>E.mx*.06)pts.push([x+nx*bo,y+ny*bo])}
+    lines.push(pts.length>=10?fitLine(pts):null)}
+  const ln=k=>{if(lines[k])return lines[k];const a=P[k],b=P[(k+1)%4];return lineThrough(a,b)};
+  const Q=[];for(let k=0;k<4;k++){const p=isect(ln((k+3)%4),ln(k));if(!p)return q;Q.push(p)}
+  const diag=Math.hypot(w,h);if(!convex(Q)||Q.some((p,i)=>Math.hypot(p[0]-P[i][0],p[1]-P[i][1])>diag*.05))return q;
+  // μαζεύει 2 εικονοστοιχεία προς τα μέσα, ώστε να μη μένει γραμμή φόντου στην άκρη της σελίδας
+  const cx=Q.reduce((s,p)=>s+p[0],0)/4,cy=Q.reduce((s,p)=>s+p[1],0)/4;
+  const out=Q.map(([x,y])=>{const d=Math.hypot(x-cx,y-cy)||1;x-=(x-cx)/d*2;y-=(y-cy)/d*2;return[Math.max(0,Math.min(1,x/w)),Math.max(0,Math.min(1,y/h))]});out.score=q.score;return out;
+}
+function lineThrough(a,b){const L=Math.hypot(b[0]-a[0],b[1]-a[1])||1,c=-(b[1]-a[1])/L,s=(b[0]-a[0])/L;return{c,s,r:a[0]*c+a[1]*s}}
+// ευθεία ελάχιστων τετραγώνων (ολική), με απόρριψη ακραίων σημείων
+function fitLine(pts){
+  let use=pts;
+  for(let it=0;it<3;it++){const n=use.length;let mx=0,my=0;for(const p of use){mx+=p[0];my+=p[1]}mx/=n;my/=n;
+    let sxx=0,syy=0,sxy=0;for(const p of use){const dx=p[0]-mx,dy=p[1]-my;sxx+=dx*dx;syy+=dy*dy;sxy+=dx*dy}
+    const th=.5*Math.atan2(2*sxy,sxx-syy),dx=Math.cos(th),dy=Math.sin(th),l={c:-dy,s:dx,r:-dy*mx+dx*my};
+    const res=use.map(p=>Math.abs(p[0]*l.c+p[1]*l.s-l.r)),sorted=res.slice().sort((a,b)=>a-b),med=sorted[Math.floor(n/2)];
+    const keep=use.filter((p,i)=>res[i]<=Math.max(1.5,med*2.5));if(it===2||keep.length===use.length||keep.length<8)return l;use=keep}
 }
 function polyArea(p){let a=0;for(let i=0;i<p.length;i++){const[j,k]=[p[i],p[(i+1)%p.length]];a+=j[0]*k[1]-k[0]*j[1]}return Math.abs(a)/2}
 function convex(q){let s=0;for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4],c=q[(i+2)%4];const z=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);if(Math.abs(z)<1e-6)return false;const g=Math.sign(z);if(s&&g!==s)return false;s=g}return true}
+// ευκρίνεια (για την αυτόματη λήψη: φωτογραφίζει μόνο όταν έχει εστιάσει)
+function sharpness(src,q){
+  const G=grayOf(src,320);if(!G)return 0;const{g,w,h}=G;let x0=1,y0=1,x1=w-2,y1=h-2;
+  if(q){x0=Math.max(1,Math.floor(Math.min(...q.map(p=>p[0]))*w));x1=Math.min(w-2,Math.ceil(Math.max(...q.map(p=>p[0]))*w));y0=Math.max(1,Math.floor(Math.min(...q.map(p=>p[1]))*h));y1=Math.min(h-2,Math.ceil(Math.max(...q.map(p=>p[1]))*h))}
+  let s=0,c=0;for(let y=y0;y<=y1;y+=2)for(let x=x0;x<=x1;x+=2){const i=y*w+x,l=4*g[i]-g[i-1]-g[i+1]-g[i-w]-g[i+w];s+=l*l;c++}
+  return c?s/c:0;
+}
 
 // ---------- Ίσιωμα σελίδας (προοπτική) ----------
 function homog(from,to){
@@ -635,23 +781,78 @@ function moveDoc(d){const fs=folders();dlgOpen('Φάκελος',`<div class="vli
   $('#dlgB').onclick=async e=>{const b=e.target.closest('[data-f]');if(!b)return;d.folder=b.dataset.f;dlgClose();await saveDoc(d);toast(d.folder?'Μπήκε στο 📁 '+d.folder:'Βγήκε από τον φάκελο')}}
 
 // ---------- Κάμερα ----------
-let camStream=null,camTrack=null,camDoc=null,camMode='doc',camTimer=null,lastQ=null,stableAt=0,lastShot=0,armed=true,torch=false,shooting=false,camNew=false;
+// Γιατί άλλαξε (έκδοση 1.1):
+// • Σε κινητά με πολλές πίσω κάμερες το Χρώμιο συχνά δίνει τον υπερευρυγώνιο φακό, που δεν εστιάζει από κοντά.
+//   Διαλέγουμε την κύρια κάμερα με αυτόματη εστίαση (ή αυτή που όρισε ο χρήστης με «🔄 Φακός»).
+// • Η λήψη γίνεται με πραγματική φωτογραφία πλήρους ανάλυσης (takePhoto), όχι με καρέ από το βίντεο.
+// • Η αυτόματη λήψη περιμένει να είναι η εικόνα καθαρή (εστιασμένη) και σταθερή.
+// • Πάτημα πάνω στην εικόνα = εστίαση σε εκείνο το σημείο.
+let camStream=null,camTrack=null,camDoc=null,camMode='doc',camTimer=null,lastQ=null,smQ=null,missN=0,stableAt=0,lastShot=0,armed=true,torch=false,shooting=false,camNew=false,camCaps={},sharpMax=0,icap=null,photoOK=true,lensList=[];
 const MODE_HINT={doc:'Στόχευσε τη σελίδα — το κίτρινο πλαίσιο δείχνει τι βρήκε',card:'Μπροστινή όψη της κάρτας',book:'Ανοιχτό βιβλίο: οι δύο σελίδες χωρίζονται μόνες τους',board:'Πίνακας ή χαρτί με χρώματα'};
+const camBase={width:{ideal:1920},height:{ideal:1080}};
+const maxD=(a,b)=>Math.max(...a.map((p,i)=>Math.hypot(p[0]-b[i][0],p[1]-b[i][1])));
+function startStream(id){return navigator.mediaDevices.getUserMedia({video:id?{deviceId:{exact:id},...camBase}:{facingMode:{ideal:'environment'},...camBase},audio:false})}
+const hasAF=t=>{try{const c=t.getCapabilities?t.getCapabilities():{};return !c.focusMode||c.focusMode.includes('continuous')}catch(e){return true}};
+async function backLenses(){
+  try{const L=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'&&d.deviceId);
+    let back=L.filter(d=>/back|rear|environment|πίσω|arri|tras|hinten/i.test(d.label));
+    if(!back.length)back=L.filter(d=>!/front|user|selfie|μπροστ|facing front/i.test(d.label));
+    const num=d=>{const m=/(\d+)/.exec(d.label||'');return m?+m[1]:99};
+    return back.sort((a,b)=>num(a)-num(b));
+  }catch(e){return[]}
+}
 async function openCam(d,mode){
   camDoc=d||null;camNew=!d;camMode=mode||(d&&d.mode)||'doc';
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('#fCam').click();return}
-  try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false})}
-  catch(e){toast('Δεν δόθηκε άδεια για την κάμερα — ανοίγει η κάμερα του κινητού');$('#fCam').click();return}
-  camTrack=camStream.getVideoTracks()[0];
-  try{const cp=camTrack.getCapabilities?camTrack.getCapabilities():{};
-    if(cp.focusMode&&cp.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});
-    $('#cTorch').classList.toggle('hidden',!cp.torch)}catch(e){}
-  const v=$('#vid');v.srcObject=camStream;await v.play().catch(()=>{});
-  $('#cam').classList.remove('hidden');pushLayer('cam');torch=false;$('#cTorch').classList.remove('on');
-  lastQ=null;stableAt=0;armed=true;paintCamUI();camThumb();
-  clearInterval(camTimer);camTimer=setInterval(camTick,220);
+  let s;const saved=LS.get('lens',null);
+  try{
+    s=await startStream(saved).catch(()=>{if(saved){LS.set('lens',null);return startStream(null)}throw 0});
+    lensList=await backLenses();
+    if(!saved&&lensList.length>1){
+      // πρώτη φορά: η κύρια πίσω κάμερα που εστιάζει μόνη της
+      const t0=s.getVideoTracks()[0],curId=(t0.getSettings&&t0.getSettings().deviceId)||'';
+      if(!(lensList[0].deviceId===curId&&hasAF(t0)))
+        for(const L of lensList){
+          if(L.deviceId===curId){if(hasAF(s.getVideoTracks()[0]))break;continue}
+          s.getTracks().forEach(t=>t.stop());
+          try{s=await startStream(L.deviceId);if(hasAF(s.getVideoTracks()[0]))break}catch(e){s=await startStream(curId||null);break}
+        }
+    }
+  }catch(e){toast('Δεν δόθηκε άδεια για την κάμερα — ανοίγει η κάμερα του κινητού');$('#fCam').click();return}
+  await useStream(s);
+  $('#cam').classList.remove('hidden');pushLayer('cam');
+  lastQ=smQ=null;stableAt=0;armed=true;paintCamUI();camThumb();
+  clearTimeout(camTimer);camTimer=setTimeout(camLoop,300);
 }
-function camStop(){clearInterval(camTimer);camTimer=null;if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=camTrack=null;$('#vid').srcObject=null}
+async function useStream(s){
+  camStream=s;camTrack=s.getVideoTracks()[0];icap=null;photoOK=!!window.ImageCapture;sharpMax=0;torch=false;$('#cTorch').classList.remove('on');
+  camCaps={};try{camCaps=camTrack.getCapabilities?camTrack.getCapabilities():{}}catch(e){}
+  if(camCaps.focusMode&&camCaps.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});
+  $('#cTorch').classList.toggle('hidden',!camCaps.torch);
+  $('#cLens').classList.toggle('hidden',lensList.length<2);
+  const v=$('#vid');v.srcObject=s;await v.play().catch(()=>{});
+}
+$('#cLens').onclick=async()=>{
+  if(lensList.length<2||shooting)return;
+  const curId=(camTrack.getSettings&&camTrack.getSettings().deviceId)||'';let i=lensList.findIndex(l=>l.deviceId===curId);i=(i+1)%lensList.length;
+  camStream.getTracks().forEach(t=>t.stop());
+  try{const s=await startStream(lensList[i].deviceId);LS.set('lens',lensList[i].deviceId);await useStream(s);
+    toast('Φακός '+(i+1)+' από '+lensList.length+(hasAF(camTrack)?'':' · χωρίς αυτόματη εστίαση — καλύτερα άλλον'))}
+  catch(e){toast('Ο φακός δεν άνοιξε');const s=await startStream(null);await useStream(s)}
+};
+// πάτημα στην εικόνα = εστίαση εκεί
+$('#camOv').addEventListener('click',async e=>{
+  if(!camTrack)return;const r=videoRect(),b=$('#camOv').getBoundingClientRect();if(!r)return;
+  const x=(e.clientX-b.left-r.x)/r.w,y=(e.clientY-b.top-r.y)/r.h;if(x<0||y<0||x>1||y>1)return;
+  const ring=$('#fRing');ring.style.left=(e.clientX-b.left)+'px';ring.style.top=(e.clientY-b.top)+'px';ring.classList.remove('hidden');ring.classList.remove('go');void ring.offsetWidth;ring.classList.add('go');setTimeout(()=>ring.classList.add('hidden'),900);
+  const fm=camCaps.focusMode||[],adv={};
+  try{if(navigator.mediaDevices.getSupportedConstraints().pointsOfInterest)adv.pointsOfInterest=[{x,y}]}catch(er){}
+  if(fm.includes('single-shot'))adv.focusMode='single-shot';else if(fm.includes('continuous'))adv.focusMode='continuous';
+  if(Object.keys(adv).length)await camTrack.applyConstraints({advanced:[adv]}).catch(()=>{});
+  sharpMax=0;stableAt=0;
+  if(fm.includes('continuous'))setTimeout(()=>{camTrack&&camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{})},3000);
+});
+function camStop(){clearTimeout(camTimer);camTimer=null;if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=camTrack=null;icap=null;$('#vid').srcObject=null}
 async function camClose(fromPop){
   camStop();$('#cam').classList.add('hidden');if(!fromPop)await popLayer('cam');
   const d=camDoc;camDoc=null;if(!d)return;
@@ -665,50 +866,83 @@ function paintCamUI(){
   $('#cHint').textContent=camMode==='card'?(n%2===0?'🪪 Μπροστινή όψη της κάρτας':'🪪 Τώρα γύρισε την κάρτα — πίσω όψη'):MODE_HINT[camMode];
   $('#cDone').textContent=n?'✓ Τέλος ('+n+')':'Τέλος';
 }
+const camState=t=>{const e=$('#cState');if(e.textContent!==t)e.textContent=t;e.classList.toggle('hidden',!t)};
 function camThumb(){if(!camDoc)return;const p=camDoc.pages[camDoc.pages.length-1];const b=$('#cLast');b.style.backgroundImage=p&&p.img?`url('${p.img}')`:'none';b.textContent=camDoc.pages.length?camDoc.pages.length:'';paintCamUI()}
 $('#cModes').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;camMode=b.dataset.m;if(camDoc&&!camDoc.pages.length)camDoc.mode=camMode;paintCamUI()};
 $('#cAuto').onclick=()=>{SET.auto=!SET.auto;saveSet();$('#sAuto').checked=SET.auto;paintCamUI();toast(SET.auto?'Αυτόματη λήψη: ναι — κράτα σταθερά':'Αυτόματη λήψη: όχι — πάτα το κίτρινο κουμπί')};
 $('#cTorch').onclick=async()=>{torch=!torch;try{await camTrack.applyConstraints({advanced:[{torch}]})}catch(e){torch=false}$('#cTorch').classList.toggle('on',torch)};
 $('#cClose').onclick=()=>camClose(false);$('#cDone').onclick=()=>camClose(false);
 $('#cLast').onclick=()=>{if(camDoc&&camDoc.pages.length)camClose(false)};
-$('#cShot').onclick=()=>camShoot();
+$('#cShot').onclick=()=>camShoot(smQ);
 function videoRect(){const v=$('#vid'),bw=v.clientWidth,bh=v.clientHeight,vw=v.videoWidth,vh=v.videoHeight;if(!vw)return null;const k=Math.min(bw/vw,bh/vh);return{x:(bw-vw*k)/2,y:(bh-vh*k)/2,w:vw*k,h:vh*k,bw,bh}}
+// ο έλεγχος τρέχει όσο συχνά αντέχει το κινητό
+function camLoop(){if(!camStream)return;const t0=performance.now();try{camTick()}catch(e){console.warn(e)}const dt=performance.now()-t0;camTimer=setTimeout(camLoop,Math.max(110,dt*1.6))}
 function camTick(){
   const v=$('#vid');if(!v.videoWidth||shooting)return;
-  const q=detectQuad(v),now=Date.now();
-  if(q&&lastQ&&Math.max(...q.map((p,i)=>Math.hypot(p[0]-lastQ[i][0],p[1]-lastQ[i][1])))<.025){if(!stableAt)stableAt=now}else stableAt=0;
-  if(!q)armed=true;else if(!armed&&camDoc&&camDoc._lastQ&&Math.max(...q.map((p,i)=>Math.hypot(p[0]-camDoc._lastQ[i][0],p[1]-camDoc._lastQ[i][1])))>.12)armed=true;
+  const q=detectQuad(v,{size:200,fast:true}),now=Date.now();
+  // εξομάλυνση: το πλαίσιο δεν «τρέμει» και δεν χάνεται για ένα καρέ
+  if(q){smQ=smQ&&maxD(q,smQ)<.06?smQ.map((p,i)=>[p[0]*.55+q[i][0]*.45,p[1]*.55+q[i][1]*.45]):q;missN=0}
+  else if(smQ&&++missN>3)smQ=null;
+  if(q&&lastQ&&maxD(q,lastQ)<.022){if(!stableAt)stableAt=now}else if(!q||!lastQ||maxD(q,lastQ)>.035)stableAt=0;
   lastQ=q;
-  const prog=stableAt?Math.min(1,(now-stableAt)/1100):0;
-  drawOverlay(q,prog);
-  if(SET.auto&&q&&armed&&prog>=1&&now-lastShot>1800)camShoot(q);
+  const Q=smQ;
+  if(!Q)armed=true;else if(!armed&&camDoc&&camDoc._lastQ&&maxD(Q,camDoc._lastQ)>.12)armed=true;
+  // ευκρίνεια: φωτογραφίζει μόνο όταν έχει εστιάσει
+  let sharpOK=true;if(Q&&stableAt){const sh=sharpness(v,Q);sharpMax=Math.max(sharpMax*.97,sh);sharpOK=sh>=sharpMax*.72}
+  const prog=stableAt?Math.min(1,(now-stableAt)/900):0;
+  drawOverlay(Q,prog,sharpOK);
+  camState(!Q?'Δεν φαίνεται σελίδα — βάλε την πάνω σε φόντο που ξεχωρίζει':(SET.auto&&armed&&!sharpOK?'Εστιάζει… κράτα σταθερά':(SET.auto&&!armed?'Γύρισε σελίδα για την επόμενη λήψη':'')));
+  if(SET.auto&&Q&&armed&&prog>=1&&sharpOK&&now-lastShot>1800)camShoot(Q);
 }
-function drawOverlay(q,prog){
+function drawOverlay(q,prog,sharpOK){
   const c=$('#camOv'),r=videoRect();if(!r)return;const dpr=devicePixelRatio||1;
   if(c.width!==Math.round(r.bw*dpr)||c.height!==Math.round(r.bh*dpr)){c.width=Math.round(r.bw*dpr);c.height=Math.round(r.bh*dpr)}
   const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,r.bw,r.bh);if(!q)return;
   x.beginPath();q.forEach(([a,b],i)=>{const X=r.x+a*r.w,Y=r.y+b*r.h;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.closePath();
-  const ok=prog>=1||(!SET.auto&&prog>0);x.fillStyle=ok?'rgba(47,138,74,.25)':'rgba(253,209,23,.22)';x.fill();x.lineWidth=3;x.strokeStyle=ok?'#4caf50':'#FDD117';x.stroke();
+  const ok=prog>=1&&sharpOK;x.fillStyle=ok?'rgba(47,138,74,.25)':'rgba(253,209,23,.22)';x.fill();x.lineWidth=3;x.strokeStyle=ok?'#4caf50':'#FDD117';x.stroke();
+  q.forEach(([a,b])=>{x.beginPath();x.arc(r.x+a*r.w,r.y+b*r.h,6,0,7);x.fillStyle=ok?'#4caf50':'#FDD117';x.fill()});
   if(SET.auto&&prog>0&&prog<1&&armed){const cx=r.x+q.reduce((s,p)=>s+p[0],0)/4*r.w,cy=r.y+q.reduce((s,p)=>s+p[1],0)/4*r.h;x.beginPath();x.arc(cx,cy,26,-Math.PI/2,-Math.PI/2+prog*Math.PI*2);x.lineWidth=6;x.strokeStyle='#fff';x.stroke()}
 }
+// πραγματική φωτογραφία πλήρους ανάλυσης· αν δεν υποστηρίζεται, καρέ από το βίντεο
+async function takeStill(){
+  if(!photoOK||!window.ImageCapture||!camTrack)return null;const t0=Date.now();
+  try{icap=icap||new ImageCapture(camTrack);const opt={};
+    try{const pc=await icap.getPhotoCapabilities();if(pc.imageWidth&&pc.imageWidth.max)opt.imageWidth=Math.min(pc.imageWidth.max,4032);if(torch&&pc.fillLightMode&&pc.fillLightMode.includes('flash'))opt.fillLightMode='flash'}catch(e){}
+    const b=await Promise.race([icap.takePhoto(opt),sleep(6000).then(()=>{throw new Error('χρόνος')})]);
+    if(Date.now()-t0>4500)photoOK=false;// πολύ αργό σε αυτό το κινητό: την επόμενη φορά καρέ
+    const u=URL.createObjectURL(b);try{return fit(await loadImg(u),3000)}finally{URL.revokeObjectURL(u)}
+  }catch(e){console.warn(e);photoOK=false;return null}
+  finally{if(torch&&camTrack)camTrack.applyConstraints({advanced:[{torch:true}]}).catch(()=>{})}
+}
+// μερικά κινητά δίνουν τη φωτογραφία γυρισμένη σε σχέση με την προβολή: τη γυρίζουμε όπως το καρέ
+function matchOrientation(ph,fr){
+  if((ph.width>ph.height)===(fr.width>fr.height))return ph;
+  const g=src=>{const c=cnv(40,40),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,40,40);const d=x.getImageData(0,0,40,40).data,o=new Float32Array(1600);for(let i=0;i<1600;i++)o[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;return o};
+  const F=g(fr),A=rotated(ph,90),B=rotated(ph,270),dA=g(A),dB=g(B);let ea=0,eb=0;for(let i=0;i<1600;i++){ea+=Math.abs(dA[i]-F[i]);eb+=Math.abs(dB[i]-F[i])}
+  ph.width=0;if(ea<=eb){B.width=0;return A}A.width=0;return B;
+}
 async function camShoot(qLive){
-  if(shooting)return;shooting=true;$('#cShot').classList.add('busy');lastShot=Date.now();armed=false;
+  if(shooting)return;shooting=true;$('#cShot').classList.add('busy');lastShot=Date.now();armed=false;camState('📸 Λήψη…');
   try{
     const v=$('#vid');if(!v.videoWidth)throw 0;
+    const frame=fit(v,2600),vAsp=v.videoWidth/v.videoHeight;
     const f=$('#flash');f.style.opacity=.85;setTimeout(()=>f.style.opacity=0,120);try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}
-    const c=fit(v,2600);
+    let c=frame;const ph=await takeStill();if(ph){c=matchOrientation(ph,frame);frame.width=0}
     if(!camDoc){camDoc=newDoc(camMode);camNew=true}
-    camDoc._lastQ=qLive||lastQ;
-    addShot(camDoc,c,camMode,qLive);
+    camDoc._lastQ=qLive||smQ;
+    // το πλαίσιο της προβολής ισχύει μόνο αν η φωτογραφία έχει το ίδιο κάδρο
+    addShot(camDoc,c,camMode,Math.abs(c.width/c.height-vAsp)<.03?qLive:null);
     await saveDoc(camDoc);paintCamUI();
-  }catch(e){toast('Η λήψη δεν έγινε — δοκίμασε ξανά')}
-  finally{shooting=false;$('#cShot').classList.remove('busy')}
+  }catch(e){console.warn(e);toast('Η λήψη δεν έγινε — δοκίμασε ξανά')}
+  finally{shooting=false;$('#cShot').classList.remove('busy');camState('')}
 }
 // μία φωτογραφία → μία ή δύο σελίδες (βιβλίο)
 function addShot(d,c,mode,qHint){
-  const q=detectQuad(c)||qHint||(mode==='book'||mode==='doc'?FULL:INSET);
+  let q=detectQuad(c,{size:320})||qHint||null;
+  if(q)q=refineQuad(c,q);
+  q=q||(mode==='book'||mode==='doc'?FULL:INSET);
   const orig=jpg(c,.9);c.width=c.height=0;
-  const base={orig,quad:q,rot:0,filter:mode==='board'?'vivid':(SET.filter||'auto'),text:'',conf:0,ocr:false,stamps:[]};
+  const base={orig,quad:q.map(p=>[p[0],p[1]]),rot:0,filter:mode==='board'?'vivid':(SET.filter||'auto'),text:'',conf:0,ocr:false,stamps:[]};
   const L=mode==='book'?[{...base,id:uid(),half:'L'},{...base,id:uid()+1,half:'R'}]:[{...base,id:uid(),card:mode==='card'}];
   L.forEach(p=>{d.pages.push(p);queue(d,p)});
   return L;
@@ -801,7 +1035,7 @@ function magDraw(a,b,px,py){
   const A=$('#cropArea');m.style.left=(px<A.clientWidth/2?A.clientWidth-130:10)+'px';m.style.top='10px';
 }
 addEventListener('resize',()=>{if(!$('#crop').classList.contains('hidden'))cropLayout()});
-$('#crAuto').onclick=()=>{const c=fit(crImg,1200);const q=detectQuad(c);c.width=0;if(q){crQ=q;cropDraw();toast('Βρέθηκε η σελίδα')}else toast('Δεν βρέθηκε καθαρά — σύρε τις γωνίες με το χέρι')};
+$('#crAuto').onclick=()=>{const c=fit(crImg,1600);let q=detectQuad(c,{size:320});if(q)q=refineQuad(c,q);c.width=0;if(q){crQ=q;cropDraw();toast('Βρέθηκε η σελίδα')}else toast('Δεν βρέθηκε καθαρά — σύρε τις γωνίες με το χέρι')};
 $('#crFull').onclick=()=>{crQ=FULL.map(a=>a.slice());cropDraw()};
 $('#crNo').onclick=()=>cropClose(false);
 $('#crOk').onclick=()=>cropClose(true);
