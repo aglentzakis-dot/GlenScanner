@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GlenScanner</title>
+<meta name="description" content="Σαρωτής εγγράφων: κάμερα → καθαρό PDF με αναγνώριση κειμένου. Χωρίς υδατογράφημα, χωρίς λογαριασμό, χωρίς συνδρομή.">
+<meta name="theme-color" content="#FDD117">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!--
+  GlenScanner · GlenApps
+  © 2026 Ανδρέας Μ. Γλεντζάκης (Andreas M. Glentzakis). Με την επιφύλαξη παντός δικαιώματος. All rights reserved.
+  Απαγορεύεται η αντιγραφή, τροποποίηση και διάθεση, εν όλω ή εν μέρει, χωρίς προηγούμενη γραπτή άδεια του κατόχου.
+-->
+<style>
+:root{--bg:#fffdf5;--card:#fff;--ink:#1d1d1b;--soft:#6b6656;--line:#ece4c8;--acc:#FDD117;--acc2:#EF9F02;--ok:#2f8a4a;--bad:#c0392b;--blue:#1e88e5}
+@media (prefers-color-scheme:dark){:root{--bg:#17150f;--card:#221f17;--ink:#f3eedd;--soft:#b3ab92;--line:#3a3524}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(#FDD117,#EF9F02);color:#1d1d1b;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;gap:10px}
+header h1{font-size:22px;margin:0;flex:1;display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:-.5px}
+header h1 img{width:34px;height:34px;border-radius:9px;background:#fff;padding:2px}
+.wm-a{color:#0d1b2a}.wm-b{background:linear-gradient(90deg,#1e88e5,#1e88e5 45%,#ff7a00);-webkit-background-clip:text;background-clip:text;color:transparent}
+header small{opacity:.75;font-size:12px}
+main{max-width:760px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button,.btn{font:inherit;border:0;border-radius:12px;padding:12px 14px;background:var(--acc);color:#1d1d1b;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;touch-action:manipulation}
+button.sec{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:500}
+button:disabled{opacity:.45}
+.tile{flex-direction:column;padding:18px 8px;font-size:15px;text-align:center}
+.tile span{font-size:30px}
+.tile.main{grid-column:1/-1;padding:22px 8px;font-size:17px}
+.tile.main span{font-size:38px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--soft);font-size:14px}
+.hidden{display:none!important}
+input[type=search],input[type=text],input[type=password],select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);min-height:46px;width:100%}
+details summary{cursor:pointer;font-weight:600}
+label.chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0}
+label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.list .it:last-child{border:0}
+.list .it div{flex:1;min-width:0}
+.list .it strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1d1d1b;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:60;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+
+/* αρχική: φάκελοι και λίστα σαρώσεων */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chips button{min-height:36px;padding:6px 12px;border-radius:20px;font-size:14px;white-space:nowrap;flex:none}
+.chips button.sec.on{background:var(--acc);border-color:var(--acc);color:#1d1d1b;font-weight:700}
+.docs .d{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.docs .d:last-child{border:0}
+.docs .th{width:54px;height:70px;flex:none;border-radius:8px;border:1px solid var(--line);background:#fff center/cover no-repeat;display:grid;place-items:center;font-size:22px}
+.docs .nm{flex:1;min-width:0}
+.docs .nm strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docs .nm small{color:var(--soft);font-size:13px}
+.docs .more{min-height:42px;width:42px;padding:0;font-size:20px}
+.empty{text-align:center;padding:18px 8px;color:var(--soft)}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:8px;background:#1e88e522;color:var(--blue);font-weight:700;margin-left:4px}
+
+/* κάμερα */
+#cam{position:fixed;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;touch-action:none}
+#cam .vw{position:relative;flex:1;min-height:0}
+#cam video,#camOv{position:absolute;inset:0;width:100%;height:100%}
+#cam video{object-fit:contain;background:#000}
+#cam .top{position:absolute;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:8px;align-items:center;justify-content:space-between;z-index:2}
+#cam .top button{background:#0008;color:#fff;border:1px solid #fff4;min-height:40px;padding:8px 12px;font-size:14px}
+#cam .top button.on{background:#FDD117;color:#000;border-color:#FDD117}
+#cam .hint{position:absolute;left:0;right:0;top:calc(60px + env(safe-area-inset-top));text-align:center;color:#fff;font-size:14px;text-shadow:0 1px 3px #000;padding:0 16px;z-index:2}
+#cam .modes{display:flex;justify-content:center;gap:4px;padding:8px 6px 2px;background:#000;overflow-x:auto;scrollbar-width:none}
+#cam .modes button{background:transparent;color:#ddd;min-height:36px;padding:6px 10px;font-size:14px;font-weight:600;flex:none}
+#cam .modes button.on{color:#FDD117;text-decoration:underline;text-underline-offset:6px}
+#cam .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:#000}
+#cam .shot{width:76px;height:76px;border-radius:50%;border:5px solid #fff;background:#FDD117;padding:0;min-height:0;position:relative}
+#cam .shot.busy{opacity:.5}
+#cam .lastTh{width:56px;height:72px;border-radius:8px;border:2px solid #fff;background:#222 center/cover no-repeat;color:#fff;font-size:13px;display:flex;align-items:flex-end;justify-content:center;padding:0 0 2px;min-height:0}
+#cam .done{min-width:96px;background:#fff;color:#000}
+#cam .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .18s;z-index:3}
+
+/* περικοπή */
+#crop{position:fixed;inset:0;z-index:40;background:#111;display:flex;flex-direction:column;touch-action:none}
+#crop .hd{color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 6px;font-size:15px;text-align:center}
+#crop .area{position:relative;flex:1;min-height:0;margin:8px 22px}
+#crop canvas.img{position:absolute;left:0;top:0}
+#crop svg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+#crop .h{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid #FDD117;background:#fdd11733;touch-action:none}
+#crop .h::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:#FDD117}
+#mag{position:absolute;width:120px;height:120px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px #000a;pointer-events:none;z-index:3;background:#000}
+#crop .ft{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+#crop .ft button.sec{color:#fff;border-color:#555}
+
+/* επεξεργασία σάρωσης */
+.ebar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ebar .nm{flex:1;min-width:0;justify-content:flex-start;font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;text-align:left}
+#pvWrap{position:relative;background:#00000010;border-radius:14px;min-height:46vh;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:pan-y}
+#pvImg{max-width:100%;max-height:58vh;display:block;box-shadow:0 2px 10px #0003;background:#fff}
+#pvWait{position:absolute;inset:0;display:grid;place-items:center;color:var(--soft);font-size:15px}
+#pgNo{position:absolute;left:10px;bottom:10px;background:#000a;color:#fff;font-size:13px;border-radius:10px;padding:2px 8px}
+#sigBox{position:absolute;border:2px dashed var(--blue);touch-action:none;cursor:move}
+#sigBox img{width:100%;display:block;pointer-events:none}
+.flt{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}.flt::-webkit-scrollbar{display:none}
+.flt button{flex:none;min-height:40px;padding:6px 12px;font-size:14px;border-radius:20px}
+.flt button.sec.on{background:var(--acc);border-color:var(--acc);color:#1d1d1b;font-weight:700}
+.tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.tools button{flex-direction:column;gap:0;font-size:12px;padding:8px 2px;min-height:58px}
+.tools button span{font-size:21px;line-height:1.2}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 6px}
+.strip .t{flex:none;width:62px;height:82px;border-radius:8px;border:2px solid var(--line);background:#fff center/cover no-repeat;position:relative;padding:0;min-height:0}
+.strip .t.on{border-color:var(--acc2);box-shadow:0 0 0 2px var(--acc)}
+.strip .t i{position:absolute;right:2px;bottom:2px;background:#000a;color:#fff;font-style:normal;font-size:11px;border-radius:6px;padding:0 4px}
+.strip .t.add{background:transparent;font-size:26px;border-style:dashed}
+.sigbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.exp{width:100%;margin-top:12px;font-size:17px;min-height:54px}
+
+/* κείμενο */
+#txtOut{min-height:50vh;resize:vertical;font-size:16px;line-height:1.6}
+
+/* διάλογος, αναμονή */
+#dlg,#busy{position:fixed;inset:0;z-index:50;background:#0008;display:flex;align-items:center;justify-content:center;padding:16px}
+#dlg .box,#busy .box{background:var(--card);color:var(--ink);border-radius:18px;padding:18px;width:100%;max-width:440px;max-height:88vh;overflow:auto}
+#dlg h3{margin:0 0 10px;font-size:18px}
+#dlgB p{margin:8px 0}
+#dlg .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.opts{display:grid;gap:6px;margin:6px 0 12px}
+.opts.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.opts button{min-height:42px;font-size:14px;padding:6px 4px}
+.opts button.sec.on{background:var(--acc);border-color:var(--acc);color:#1d1d1b;font-weight:700}
+.vlist{display:grid;gap:8px}
+.vlist button{justify-content:flex-start}
+#busy .bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:12px 0}
+#busy .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FDD117,#EF9F02);transition:width .2s}
+#sigPad{width:100%;height:180px;border:1px dashed var(--soft);border-radius:12px;background:#fff;touch-action:none;display:block}
+</style>
+</head>
+<body>
+<header>
+  <h1><img src="icon-192.png" alt=""><span><span class="wm-a">Glen</span><span class="wm-b">Scanner</span></span></h1>
+  <small id="ver"></small>
+</header>
+<main>
+
+<!-- ΑΡΧΙΚΗ -->
+<section id="home">
+  <div class="card hidden" id="instBox" style="border:2px solid var(--acc2)">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
+      <img src="icon-192.png" alt="" style="width:52px;height:52px;border-radius:12px;flex:0 0 auto">
+      <div style="flex:1">
+        <strong>Βάλε το GlenScanner στο κινητό σου</strong>
+        <div class="muted" id="instTxt">Ανοίγει σαν κανονική εφαρμογή από την αρχική οθόνη, και σαρώνει και χωρίς ίντερνετ.</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="instYes">📲 Εγκατάσταση</button>
+      <button class="sec" id="instNo">Όχι τώρα</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="big">
+      <button class="tile main" id="bScan"><span>📷</span>Νέα σάρωση</button>
+      <button class="tile sec" id="bGal"><span>🖼️</span>Από φωτογραφίες</button>
+      <button class="tile sec" id="bId"><span>🪪</span>Ταυτότητα / κάρτα</button>
+    </div>
+    <input type="file" id="fImg" accept="image/*" multiple hidden>
+    <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+    <p class="muted" style="margin:12px 0 0">Χωρίς υδατογράφημα, χωρίς λογαριασμό, χωρίς συνδρομή. Οι σαρώσεις σου μένουν στο κινητό — φεύγουν μόνο όταν τις στείλεις εσύ.</p>
+  </div>
+
+  <div id="efmSlot"></div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:8px"><strong style="flex:1">📁 Οι σαρώσεις μου</strong><span class="muted" id="docCount"></span></div>
+    <input type="search" id="q" placeholder="🔎 Αναζήτηση σε ονόματα και κείμενο…" autocomplete="off">
+    <div class="chips" id="chips" style="margin-top:8px"></div>
+    <div class="docs" id="docs"></div>
+  </div>
+
+  <div class="card">
+    <details id="setBox">
+      <summary>⚙️ Ρυθμίσεις</summary>
+      <p><label>Γλώσσα αναγνώρισης κειμένου<br>
+        <select id="sLang">
+          <option value="ell+eng">Ελληνικά και Αγγλικά</option>
+          <option value="ell">Μόνο Ελληνικά</option>
+          <option value="eng">Μόνο Αγγλικά</option>
+        </select></label></p>
+      <p><label>Βελτίωση που μπαίνει σε κάθε νέα σελίδα<br>
+        <select id="sFilter">
+          <option value="auto">Καθαρό (αφαίρεση σκιών, λευκό φόντο)</option>
+          <option value="vivid">Έντονο (χρώματα, πίνακες, αποδείξεις)</option>
+          <option value="gray">Γκρι</option>
+          <option value="bw">Ασπρόμαυρο (μικρότερο αρχείο)</option>
+          <option value="orig">Πρωτότυπο (χωρίς βελτίωση)</option>
+        </select></label></p>
+      <label class="chk"><input type="checkbox" id="sAuto"><span>Αυτόματη λήψη: η κάμερα φωτογραφίζει μόνη της μόλις το έγγραφο μείνει σταθερό</span></label>
+      <label class="chk"><input type="checkbox" id="sOcr"><span>Αναγνώριση κειμένου αμέσως μετά τη σάρωση (για αναζήτηση και αυτόματο όνομα)</span></label>
+      <div class="row" style="margin-top:6px"><button class="sec" id="bSig">✍️ Η υπογραφή μου</button><span class="muted" id="sigState"></span></div>
+      <p class="muted">Την πρώτη φορά η αναγνώριση κειμένου κατεβάζει τα λεξικά γλώσσας (μία φορά, χρειάζεται σύνδεση). Μετά δουλεύει και χωρίς ίντερνετ.</p>
+    </details>
+  </div>
+
+  <div class="card">
+    <details id="bkBox">
+      <summary>💾 Αντίγραφα ασφαλείας</summary>
+      <p class="muted">Οι σαρώσεις μένουν μόνο στο κινητό σου. Αν καθαρίσεις τα δεδομένα του περιηγητή ή αλλάξεις κινητό, χάνονται — γι' αυτό κράτα αντίγραφο.</p>
+      <div class="card" style="margin:10px 0;padding:12px">
+        <p style="margin:0 0 6px"><b>☁️ Google Drive</b> — <span id="gdState">δεν έχει συνδεθεί</span></p>
+        <p class="muted" style="margin:0 0 8px">Με το Google Drive οι σαρώσεις σου είναι ασφαλείς ακόμα κι αν χαλάσει ή χαθεί το κινητό. Ένα πάτημα για σύνδεση, μετά ανεβαίνουν μόνες τους μετά από κάθε αλλαγή, στο <b>GlenApps › GlenScanner</b> του δικού σου Drive.</p>
+        <div class="row">
+          <button id="gdConnect">Σύνδεση με Google</button>
+          <button class="sec hidden" id="gdNow">⬆ Ανέβασμα τώρα</button>
+          <button class="sec hidden" id="gdList">↩ Επαναφορά από Drive</button>
+          <button class="sec hidden" id="gdOff">Αποσύνδεση</button>
+        </div>
+        <div class="list" id="gdFiles"></div>
+      </div>
+      <p><b>Φάκελος στο κινητό</b> (δεύτερος τρόπος, αν δεν έχεις Google Drive):<br> <span id="bkState">δεν έχει οριστεί</span></p>
+      <div class="row">
+        <button id="bkPick">📁 Επιλογή φακέλου</button>
+        <button class="sec hidden" id="bkForget">✕ Αποσύνδεση φακέλου</button>
+      </div>
+      <p class="muted">Μέσα στον φάκελο που θα διαλέξεις μπαίνει <b>GlenApps › GlenScanner</b>, όπως σε όλες τις εφαρμογές μας. Μετά από κάθε αλλαγή γράφεται αυτόματα ένα αρχείο της ημέρας. Τα PDF που αποθηκεύεις μπαίνουν στο <b>GlenApps › GlenScanner › Έγγραφα</b>.</p>
+      <div class="row">
+        <button class="sec" id="bkNow">⬇ Αντίγραφο τώρα</button>
+        <button class="sec" id="bkRestore">↩ Επαναφορά</button>
+        <input type="file" id="bkFile" accept=".json,application/json" hidden>
+      </div>
+      <div class="list" id="bkList"></div>
+      <p class="muted">Αν το κινητό δεν υποστηρίζει φάκελο, το «Αντίγραφο τώρα» κατεβάζει το αρχείο στις Λήψεις και η «Επαναφορά» σου ζητά να το διαλέξεις.</p>
+    </details>
+  </div>
+
+  <div class="card">
+    <details id="appsBox">
+      <summary>✨ Οι εφαρμογές μας</summary>
+      <div id="efmPage" style="margin-top:10px"></div>
+    </details>
+  </div>
+  <div class="card">
+    <details>
+      <summary>❓ Οδηγός χρήσης</summary>
+      <ul class="muted" style="padding-left:18px">
+        <li><b>Νέα σάρωση</b>: στόχευσε το έγγραφο· το κίτρινο πλαίσιο δείχνει τι βρήκε. Με την αυτόματη λήψη φωτογραφίζει μόνο του — γύρνα σελίδα και συνεχίζει. Πάτα <b>Τέλος</b> όταν τελειώσεις.</li>
+        <li><b>Ταυτότητα / κάρτα</b>: φωτογράφισε μπροστά και πίσω· στο PDF μπαίνουν και οι δύο όψεις σε μία σελίδα Α4, σε πραγματικό μέγεθος.</li>
+        <li><b>Βιβλίο</b>: φωτογράφισε ανοιχτό βιβλίο· οι δύο σελίδες χωρίζονται μόνες τους.</li>
+        <li><b>✂️ Περικοπή</b>: σύρε τις 4 γωνίες· ο μεγεθυντικός φακός δείχνει ακριβώς πού είσαι. Η σελίδα ισιώνει μόνη της.</li>
+        <li><b>Βελτίωση</b>: «Καθαρό» σβήνει σκιές και ασπρίζει το χαρτί. «Ασπρόμαυρο» δίνει το μικρότερο αρχείο.</li>
+        <li><b>🔤 Κείμενο</b>: διαβάζει το κείμενο (ελληνικά και αγγλικά)· το PDF γίνεται με αναζήτηση και αντιγραφή κειμένου.</li>
+        <li><b>🏷️ Σήμανση</b>: γράψε π.χ. «ΜΟΝΟ ΓΙΑ ΤΗΝ ΤΡΑΠΕΖΑ» πάνω στο αντίγραφο της ταυτότητας, για να μη χρησιμοποιηθεί αλλού.</li>
+        <li><b>⬆ Εξαγωγή</b>: PDF, φωτογραφίες ή κείμενο, σε μέγεθος που διαλέγεις, με κωδικό αν θέλεις. Κοινοποίηση σε ταχυδρομείο, Viber κ.λπ.</li>
+      </ul>
+    </details>
+  </div>
+  <div class="card">
+    <div class="row"><span class="muted" style="flex:1">Έκδοση <b id="ver2"></b></span><button class="sec" id="bUpd">🔄 Έλεγχος αναβάθμισης</button></div>
+  </div>
+  <p class="muted" style="text-align:center;font-size:13px">© 2026 Ανδρέας Μ. Γλεντζάκης · GlenApps · Με επιφύλαξη παντός δικαιώματος<br><a href="privacy.html" style="color:inherit">Πολιτική απορρήτου</a></p>
+</section>
+
+<!-- ΕΠΕΞΕΡΓΑΣΙΑ ΣΑΡΩΣΗΣ -->
+<section id="edit" class="hidden">
+  <div class="ebar">
+    <button class="sec" id="eBack" aria-label="Πίσω">←</button>
+    <button class="sec nm" id="eName"></button>
+    <button class="sec" id="eMore" aria-label="Επιλογές">⋮</button>
+  </div>
+  <div id="pvWrap">
+    <img id="pvImg" alt="">
+    <div id="pvWait" class="hidden">⏳ Επεξεργασία σελίδας…</div>
+    <div id="sigBox" class="hidden"><img alt=""></div>
+    <span id="pgNo"></span>
+  </div>
+  <div class="sigbar hidden" id="sigBar">
+    <button class="sec" id="sgSmall">➖</button><button class="sec" id="sgBig">➕</button>
+    <button class="sec" id="sgCancel">Ακύρωση</button><button id="sgOk">✓ Βάλε την υπογραφή</button>
+  </div>
+  <div id="eMain">
+    <div class="flt" id="flt">
+      <button class="sec" data-f="orig">Πρωτότυπο</button>
+      <button class="sec" data-f="auto">✨ Καθαρό</button>
+      <button class="sec" data-f="vivid">🎨 Έντονο</button>
+      <button class="sec" data-f="gray">Γκρι</button>
+      <button class="sec" data-f="bw">Ασπρόμαυρο</button>
+      <button class="sec" data-f="all" style="border-style:dashed">⇉ Σε όλες</button>
+    </div>
+    <div class="tools">
+      <button class="sec" id="tCrop"><span>✂️</span>Περικοπή</button>
+      <button class="sec" id="tRot"><span>↻</span>Περιστροφή</button>
+      <button class="sec" id="tLeft"><span>◀</span>Μετακίνηση</button>
+      <button class="sec" id="tRight"><span>▶</span>Μετακίνηση</button>
+      <button class="sec" id="tOcr"><span>🔤</span>Κείμενο</button>
+      <button class="sec" id="tSig"><span>✍️</span>Υπογραφή</button>
+      <button class="sec" id="tMark"><span>🏷️</span>Σήμανση</button>
+      <button class="sec" id="tDel"><span>🗑</span>Σελίδα</button>
+    </div>
+    <div class="strip" id="strip"></div>
+    <button class="exp" id="bExport">⬆ Εξαγωγή · Κοινοποίηση</button>
+  </div>
+</section>
+
+<!-- ΚΕΙΜΕΝΟ -->
+<section id="text" class="hidden">
+  <div class="ebar">
+    <button class="sec" id="xBack" aria-label="Πίσω">←</button>
+    <strong style="flex:1">🔤 Κείμενο σάρωσης</strong>
+  </div>
+  <textarea id="txtOut" readonly></textarea>
+  <div class="row" style="margin-top:10px">
+    <button id="xCopy">📋 Αντιγραφή</button>
+    <button class="sec" id="xShare">📤 Κοινοποίηση</button>
+    <button class="sec" id="xRead">📖 Στο GlenRead</button>
+    <button class="sec" id="xAgain">🔄 Νέα αναγνώριση</button>
+  </div>
+  <p class="muted" id="xNote"></p>
+</section>
+</main>
+
+<!-- ΚΑΜΕΡΑ -->
+<div id="cam" class="hidden">
+  <div class="vw">
+    <video id="vid" playsinline muted autoplay></video>
+    <canvas id="camOv"></canvas>
+    <div class="flash" id="flash"></div>
+    <div class="top">
+      <button id="cClose">✕</button>
+      <div class="row" style="gap:6px">
+        <button id="cAuto">⚡ Αυτόματα</button>
+        <button id="cTorch" class="hidden">🔦</button>
+      </div>
+    </div>
+    <div class="hint" id="cHint"></div>
+  </div>
+  <div class="modes" id="cModes">
+    <button data-m="doc">Έγγραφο</button>
+    <button data-m="card">Ταυτότητα</button>
+    <button data-m="book">Βιβλίο</button>
+    <button data-m="board">Πίνακας</button>
+  </div>
+  <div class="bar">
+    <button class="lastTh" id="cLast"></button>
+    <button class="shot" id="cShot" aria-label="Λήψη"></button>
+    <button class="done" id="cDone">Τέλος</button>
+  </div>
+</div>
+
+<!-- ΠΕΡΙΚΟΠΗ -->
+<div id="crop" class="hidden">
+  <div class="hd">Σύρε τις γωνίες στις άκρες της σελίδας</div>
+  <div class="area" id="cropArea">
+    <canvas class="img" id="cropImg"></canvas>
+    <svg id="cropSvg"><polygon id="cropPoly" fill="#fdd11722" stroke="#FDD117" stroke-width="2.5"/></svg>
+    <div class="h" data-i="0"></div><div class="h" data-i="1"></div><div class="h" data-i="2"></div><div class="h" data-i="3"></div>
+    <canvas id="mag" class="hidden" width="240" height="240"></canvas>
+  </div>
+  <div class="ft">
+    <button class="sec" id="crAuto">🔍 Αυτόματα</button>
+    <button class="sec" id="crFull">⬜ Όλη η εικόνα</button>
+    <button class="sec" id="crNo">Ακύρωση</button>
+    <button id="crOk">✓ Εντάξει</button>
+  </div>
+</div>
+
+<div id="dlg" class="hidden"><div class="box">
+  <h3 id="dlgT"></h3><div id="dlgB"></div>
+  <div class="acts"><button class="sec" id="dlgNo">Ακύρωση</button><button id="dlgOk">Εντάξει</button></div>
+</div></div>
+<div id="busy" class="hidden"><div class="box">
+  <strong id="bsT">Περίμενε…</strong>
+  <div class="bar"><i id="bsP"></i></div>
+  <div class="muted" id="bsM"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="sec" id="bsStop">Διακοπή</button></div>
+</div></div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+<script src="antigrafa.js"></script>
+<script src="/efarmoges-mas.js"></script>
+<script>window.EfarmogesMas||document.write('<script src="efarmoges-mas.js"><\/script>')</script>
+<script>
+'use strict';
+const VERSION='1.0';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+$('#ver').textContent='GlenApps · '+VERSION;$('#ver2').textContent=VERSION;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2800)};
+const LS={get(k,d){try{const v=localStorage.getItem('glenscanner-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('glenscanner-'+k,JSON.stringify(v))}catch(e){}}};
+const SET=Object.assign({lang:'ell+eng',filter:'auto',auto:true,ocr:false},LS.get('set',{}));
+const saveSet=()=>LS.set('set',SET);
+const uid=()=>Date.now()+Math.floor(Math.random()*1000);
+const fmtDate=d=>new Date(d).toLocaleString('el-GR',{day:'numeric',month:'numeric',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+const kb=n=>n>1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB';
+const safeName=s=>(String(s||'Σάρωση').replace(/[\\/:*?"<>|\n\r]+/g,'-').trim()||'Σάρωση').slice(0,80);
+const FILTERS={orig:'Πρωτότυπο',auto:'Καθαρό',vivid:'Έντονο',gray:'Γκρι',bw:'Ασπρόμαυρο'};
+
+// ---------- Προβολές και κουμπί «πίσω» ----------
+let view='home';
+function show(id){
+  view=id;['home','edit','text'].forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));
+  if(id!=='home'&&!(history.state&&history.state.v===id))history.pushState({v:id},'');
+  scrollTo(0,0);if(id==='home'){drawDocs();efmShow()}
+}
+function pushLayer(n){history.pushState({v:n},'')}
+// κλείσιμο επιπέδου από κουμπί της εφαρμογής: γυρνά πίσω στο ιστορικό χωρίς να το «δει» ο χειριστής του «πίσω»
+let ignorePop=0;
+function popLayer(n){return new Promise(r=>{if(history.state&&history.state.v===n){ignorePop++;const f=()=>{removeEventListener('popstate',f);setTimeout(r,0)};addEventListener('popstate',f);history.back()}else r()})}
+addEventListener('popstate',()=>{
+  if(ignorePop){ignorePop--;return}
+  if(!$('#dlg').classList.contains('hidden')){dlgClose();if(view!=='home')history.pushState({v:view},'');return}
+  if(!$('#crop').classList.contains('hidden')){cropClose(false,true);return}
+  if(!$('#cam').classList.contains('hidden')){camClose(true);return}
+  if(sigPlacing){sigEnd(false,true);return}
+  if(view==='text'){show('edit');return}
+  if(view!=='home'){leaveEdit();return}
+});
+
+// ---------- Διάλογος και αναμονή ----------
+let dlgCb=null,dlgAt=0;
+function dlgOpen(title,body,cb,opt){opt=opt||{};dlgAt=Date.now();$('#dlgT').textContent=title;$('#dlgB').innerHTML=body;dlgCb=cb||null;
+  $('#dlgOk').textContent=opt.ok||'Εντάξει';$('#dlgNo').textContent=opt.no||'Ακύρωση';$('#dlgNo').classList.toggle('hidden',!!opt.info);$('#dlgOk').classList.toggle('hidden',!!opt.noOk);
+  $('#dlg').classList.remove('hidden')}
+function dlgClose(){$('#dlg').classList.add('hidden');$('#dlgB').innerHTML='';dlgCb=null}
+$('#dlgOk').onclick=async()=>{const cb=dlgCb;let keep=false;try{if(cb)keep=(await cb())===false}catch(e){console.warn(e)}if(!keep)dlgClose()};
+$('#dlgNo').onclick=dlgClose;$('#dlg').onclick=e=>{if(e.target.id==='dlg'&&Date.now()-dlgAt>600)dlgClose()};
+let stopFlag=false;
+function busy(t,m,p){if(t===false){$('#busy').classList.add('hidden');return}$('#busy').classList.remove('hidden');if(t)$('#bsT').textContent=t;if(m!=null)$('#bsM').textContent=m;$('#bsP').style.width=Math.round((p||0)*100)+'%'}
+$('#bsStop').onclick=()=>{stopFlag=true;$('#bsM').textContent='Σταματάει…'};
+
+// ---------- Αποθήκευση (IndexedDB) ----------
+// Σχήμα εγγράφου — συμβατό με το GlenRead για μελλοντική ένωση των δύο εφαρμογών:
+// doc = {id, name, date (ISO), upd, folder, src:'glenscanner', mark, pages:[{id, text, conf, ocr, words, orig, quad, rot, half, card, filter, img, w, h, stamps}]}
+// Το GlenRead διαβάζει από κάθε σελίδα τα text/conf/ocr· τα υπόλοιπα είναι επιπλέον στοιχεία της σάρωσης.
+const db=new Promise((ok,no)=>{const r=indexedDB.open('glenscanner',1);r.onupgradeneeded=()=>r.result.createObjectStore('docs',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function store(mode,fn){const d=await db;return new Promise((ok,no)=>{const tx=d.transaction('docs',mode);const r=fn(tx.objectStore('docs'));tx.oncomplete=()=>ok(r&&r.result);tx.onerror=()=>no(tx.error)})}
+const allDocs=()=>store('readonly',s=>s.getAll());
+let docsCache=[];
+async function saveDoc(d){d.upd=Date.now();try{await store('readwrite',s=>s.put(d))}catch(e){toast('Δεν αποθηκεύτηκε — ίσως γέμισε ο χώρος του κινητού')}changed()}
+async function delDoc(id){await store('readwrite',s=>s.delete(id));changed()}
+function newDoc(mode){const d=new Date();return{id:uid(),name:'Σάρωση '+d.toLocaleDateString('el-GR')+' '+d.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}),autoName:true,date:d.toISOString(),upd:Date.now(),folder:curFolder&&curFolder!=='*'?curFolder:'',src:'glenscanner',mode:mode||'doc',mark:'',pages:[]}}
+
+// ---------- Εικόνες ----------
+const loadImg=src=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('img'));i.src=src});
+const cnv=(w,h)=>{const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c};
+const dims=s=>[s.videoWidth||s.naturalWidth||s.width,s.videoHeight||s.naturalHeight||s.height];
+function fit(src,max){const[w,h]=dims(src),k=Math.min(1,max/Math.max(w,h));const c=cnv(w*k,h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c}
+const jpg=(c,q)=>c.toDataURL('image/jpeg',q||.88);
+async function fileToCanvas(f){const u=URL.createObjectURL(f);try{const i=await loadImg(u);return fit(i,2600)}finally{setTimeout(()=>URL.revokeObjectURL(u),2000)}}
+function rotated(src,deg){const[w,h]=dims(src);const r=deg%180!==0,c=cnv(r?h:w,r?w:h),x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(deg*Math.PI/180);x.drawImage(src,-w/2,-h/2);return c}
+
+// ---------- Εντοπισμός σελίδας (χωρίς εξωτερικές βιβλιοθήκες) ----------
+// Μικραίνει την εικόνα, ξεχωρίζει το φωτεινό, άχρωμο χαρτί από το φόντο (κατώφλι Otsu),
+// κρατά τη μεγαλύτερη περιοχή και βρίσκει τις 4 γωνίες της.
+const FULL=[[0,0],[1,0],[1,1],[0,1]];
+const INSET=[[.04,.04],[.96,.04],[.96,.96],[.04,.96]];
+const detC=document.createElement('canvas');
+function detectQuad(src){
+  const[W,H]=dims(src);if(!W||!H)return null;
+  const k=Math.min(1,220/Math.max(W,H)),w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h;
+  detC.width=w;detC.height=h;const x=detC.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data;let v=new Float32Array(n);
+  for(let i=0;i<n;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);v[i]=(r*.299+g*.587+b*.114)-(mx-mn)*.7}
+  // θόλωμα (δύο περάσματα) για να σβήσουν τα γράμματα
+  for(let p=0;p<2;p++){const t=new Float32Array(n);
+    for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){let s=0,c=0;for(let dx=-2;dx<=2;dx++){const X=xx+dx;if(X>=0&&X<w){s+=v[yy*w+X];c++}}t[yy*w+xx]=s/c}
+    for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){let s=0,c=0;for(let dy=-2;dy<=2;dy++){const Y=yy+dy;if(Y>=0&&Y<h){s+=t[Y*w+xx];c++}}v[yy*w+xx]=s/c}}
+  // Otsu
+  const hist=new Float64Array(256);for(let i=0;i<n;i++)hist[Math.max(0,Math.min(255,v[i]|0))]++;
+  let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=0,thr=128;
+  for(let i=0;i<256;i++){wB+=hist[i];if(!wB)continue;const wF=n-wB;if(!wF)break;sB+=i*hist[i];const mB=sB/wB,mF=(sum-sB)/wF,b=wB*wF*(mB-mF)*(mB-mF);if(b>best){best=b;thr=i}}
+  let m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=v[i]>thr?1:0;
+  // διάβρωση: κόβει λεπτές «γέφυρες» με φωτεινό φόντο
+  const e=new Uint8Array(n);for(let yy=1;yy<h-1;yy++)for(let xx=1;xx<w-1;xx++){const i=yy*w+xx;e[i]=m[i]&m[i-1]&m[i+1]&m[i-w]&m[i+w]}
+  // μεγαλύτερη συνεχής περιοχή
+  const lab=new Int32Array(n),st=new Int32Array(n);let bestL=0,bestA=0,L=0;
+  for(let i=0;i<n;i++){if(!e[i]||lab[i])continue;L++;let sp=0,a=0;st[sp++]=i;lab[i]=L;
+    while(sp){const j=st[--sp];a++;const jx=j%w;
+      if(jx>0&&e[j-1]&&!lab[j-1]){lab[j-1]=L;st[sp++]=j-1}
+      if(jx<w-1&&e[j+1]&&!lab[j+1]){lab[j+1]=L;st[sp++]=j+1}
+      if(j>=w&&e[j-w]&&!lab[j-w]){lab[j-w]=L;st[sp++]=j-w}
+      if(j<n-w&&e[j+w]&&!lab[j+w]){lab[j+w]=L;st[sp++]=j+w}}
+    if(a>bestA){bestA=a;bestL=L}}
+  if(bestA<n*.1)return null;
+  let tl=[0,0,1e9],tr=[0,0,-1e9],br=[0,0,-1e9],bl=[0,0,1e9],cx=0,cy=0;
+  for(let i=0;i<n;i++){if(lab[i]!==bestL)continue;const X=i%w,Y=(i-X)/w;cx+=X;cy+=Y;
+    if(X+Y<tl[2])tl=[X,Y,X+Y];if(X+Y>br[2])br=[X,Y,X+Y];if(X-Y>tr[2])tr=[X,Y,X-Y];if(X-Y<bl[2])bl=[X,Y,X-Y]}
+  cx/=bestA;cy/=bestA;
+  let q=[tl,tr,br,bl].map(([X,Y])=>{const dx=X-cx,dy=Y-cy,l=Math.hypot(dx,dy)||1;return[Math.max(0,Math.min(1,(X+.5+dx/l*1.5)/w)),Math.max(0,Math.min(1,(Y+.5+dy/l*1.5)/h))]});
+  const area=polyArea(q.map(([a,b])=>[a*w,b*h]));
+  if(area<bestA*.75||area>n*.985)return null;
+  // απορρίπτει πολύ στραβά τετράπλευρα
+  if(!convex(q))return null;
+  return q;
+}
+function polyArea(p){let a=0;for(let i=0;i<p.length;i++){const[j,k]=[p[i],p[(i+1)%p.length]];a+=j[0]*k[1]-k[0]*j[1]}return Math.abs(a)/2}
+function convex(q){let s=0;for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4],c=q[(i+2)%4];const z=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);if(Math.abs(z)<1e-6)return false;const g=Math.sign(z);if(s&&g!==s)return false;s=g}return true}
+
+// ---------- Ίσιωμα σελίδας (προοπτική) ----------
+function homog(from,to){
+  const A=[],B=[];
+  for(let i=0;i<4;i++){const[x,y]=from[i],[X,Y]=to[i];A.push([x,y,1,0,0,0,-X*x,-X*y]);B.push(X);A.push([0,0,0,x,y,1,-Y*x,-Y*y]);B.push(Y)}
+  for(let c=0;c<8;c++){let p=c;for(let r=c+1;r<8;r++)if(Math.abs(A[r][c])>Math.abs(A[p][c]))p=r;[A[c],A[p]]=[A[p],A[c]];[B[c],B[p]]=[B[p],B[c]];
+    const d=A[c][c]||1e-12;for(let r=0;r<8;r++){if(r===c)continue;const f=A[r][c]/d;if(!f)continue;for(let k=c;k<8;k++)A[r][k]-=f*A[c][k];B[r]-=f*B[c]}}
+  const h=B.map((b,i)=>b/(A[i][i]||1e-12));h.push(1);return h;
+}
+function warp(src,q,ow,oh){
+  const[sw,sh]=dims(src);const sc=cnv(sw,sh),sx=sc.getContext('2d',{willReadFrequently:true});sx.drawImage(src,0,0);
+  const sd=sx.getImageData(0,0,sw,sh).data;sc.width=sc.height=0;
+  const H=homog([[0,0],[ow,0],[ow,oh],[0,oh]],q);
+  const out=cnv(ow,oh),ox=out.getContext('2d'),im=ox.createImageData(out.width,out.height),od=im.data;ow=out.width;oh=out.height;
+  const mx=sw-1,my=sh-1;let o=0;
+  for(let y=0;y<oh;y++){const yy=y+.5;
+    for(let x=0;x<ow;x++,o+=4){const xx=x+.5,den=H[6]*xx+H[7]*yy+1;let X=(H[0]*xx+H[1]*yy+H[2])/den-.5,Y=(H[3]*xx+H[4]*yy+H[5])/den-.5;
+      if(X<0)X=0;else if(X>mx)X=mx;if(Y<0)Y=0;else if(Y>my)Y=my;
+      const x0=X|0,y0=Y|0,x1=x0<mx?x0+1:x0,y1=y0<my?y0+1:y0,fx=X-x0,fy=Y-y0;
+      const a=(y0*sw+x0)*4,b=(y0*sw+x1)*4,c=(y1*sw+x0)*4,d=(y1*sw+x1)*4;
+      for(let k=0;k<3;k++){const t=sd[a+k]+(sd[b+k]-sd[a+k])*fx,u=sd[c+k]+(sd[d+k]-sd[c+k])*fx;od[o+k]=t+(u-t)*fy}
+      od[o+3]=255}}
+  ox.putImageData(im,0,0);return out;
+}
+function outSize(q,W,H,max){
+  const P=q.map(([x,y])=>[x*W,y*H]),D=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  let w=(D(P[0],P[1])+D(P[3],P[2]))/2,h=(D(P[0],P[3])+D(P[1],P[2]))/2;const k=Math.min(1,max/Math.max(w,h));return[Math.max(16,Math.round(w*k)),Math.max(16,Math.round(h*k)),P];
+}
+
+// ---------- Βελτίωση εικόνας ----------
+// «Καθαρό»: υπολογίζει το φως του χαρτιού σε κάθε σημείο και το ισιώνει (φεύγουν σκιές και κιτρίνισμα),
+// μετά τεντώνει την αντίθεση ώστε το χαρτί να γίνει λευκό και τα γράμματα σκούρα.
+function lightMap(d,w,h){
+  const B=Math.max(8,Math.ceil(Math.max(w,h)/48)),gw=Math.ceil(w/B),gh=Math.ceil(h/B),g=new Float32Array(gw*gh);
+  for(let by=0;by<gh;by++)for(let bx=0;bx<gw;bx++){const vals=[];
+    for(let y=by*B;y<Math.min(h,(by+1)*B);y+=2)for(let x=bx*B;x<Math.min(w,(bx+1)*B);x+=2){const i=(y*w+x)*4;vals.push(d[i]*.299+d[i+1]*.587+d[i+2]*.114)}
+    vals.sort((a,b)=>a-b);g[by*gw+bx]=vals[Math.floor(vals.length*.9)]||255}
+  // διαστολή + θόλωμα στο πλέγμα
+  let t=new Float32Array(g);for(let it=0;it<2;it++){const u=new Float32Array(t);for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){let m=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Y=y+dy;if(X>=0&&Y>=0&&X<gw&&Y<gh)m=Math.max(m,t[Y*gw+X])}u[y*gw+x]=m}t=u}
+  for(let it=0;it<3;it++){const u=new Float32Array(t);for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){let s=0,c=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Y=y+dy;if(X>=0&&Y>=0&&X<gw&&Y<gh){s+=t[Y*gw+X];c++}}u[y*gw+x]=s/c}t=u}
+  return{t,gw,gh,B};
+}
+function applyFilter(c,f){
+  if(f==='orig')return c;
+  const w=c.width,h=c.height,x=c.getContext('2d',{willReadFrequently:true}),im=x.getImageData(0,0,w,h),d=im.data,n=w*h;
+  const{t,gw,gh,B}=lightMap(d,w,h);
+  const lum=new Uint8ClampedArray(n);
+  for(let y=0;y<h;y++){const gy=Math.min(gh-1.001,Math.max(0,(y+.5)/B-.5)),y0=gy|0,fy=gy-y0,y1=Math.min(gh-1,y0+1);
+    for(let xx=0;xx<w;xx++){const gx=Math.min(gw-1.001,Math.max(0,(xx+.5)/B-.5)),x0=gx|0,fx=gx-x0,x1=Math.min(gw-1,x0+1);
+      const a=t[y0*gw+x0],b=t[y0*gw+x1],cc=t[y1*gw+x0],dd=t[y1*gw+x1],bg=Math.max(30,(a+(b-a)*fx)*(1-fy)+(cc+(dd-cc)*fx)*fy);
+      const i=(y*w+xx)*4,k=245/bg;d[i]=Math.min(255,d[i]*k);d[i+1]=Math.min(255,d[i+1]*k);d[i+2]=Math.min(255,d[i+2]*k);lum[y*w+xx]=d[i]*.299+d[i+1]*.587+d[i+2]*.114}}
+  // μαύρο σημείο από το 1,5% των πιο σκούρων
+  const hist=new Uint32Array(256);for(let i=0;i<n;i++)hist[lum[i]]++;let acc=0,bp=0;for(let i=0;i<256;i++){acc+=hist[i];if(acc>n*.015){bp=i;break}}
+  bp=Math.min(bp,120);const wp=232,sc=255/(wp-bp),sat=f==='vivid'?1.45:1;
+  const LUT=new Uint8ClampedArray(256);for(let i=0;i<256;i++){let v=(i-bp)*sc;v=v<0?0:v>255?255:v;LUT[i]=255*Math.pow(v/255,f==='bw'?1:1.15)}
+  for(let i=0;i<n;i++){const o=i*4;
+    if(f==='gray'||f==='bw'){const v=LUT[lum[i]];d[o]=d[o+1]=d[o+2]=v;lum[i]=v}
+    else{let r=LUT[d[o]],g=LUT[d[o+1]],b=LUT[d[o+2]];if(sat!==1){const l=r*.299+g*.587+b*.114;r=l+(r-l)*sat;g=l+(g-l)*sat;b=l+(b-l)*sat}d[o]=r;d[o+1]=g;d[o+2]=b}}
+  if(f==='bw')adaptiveInto(lum,w,h,d);
+  x.putImageData(im,0,0);return c;
+}
+// τοπικό κατώφλι (αντέχει άνισο φως)
+function adaptiveInto(g,w,h,d){
+  const I=new Float64Array((w+1)*(h+1));
+  for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=g[y*w+x];I[(y+1)*(w+1)+x+1]=I[y*(w+1)+x+1]+row}}
+  const s=Math.max(8,Math.round(w/24))>>1,t=.12;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const x1=Math.max(0,x-s),x2=Math.min(w-1,x+s),y1=Math.max(0,y-s),y2=Math.min(h-1,y+s),cnt=(x2-x1+1)*(y2-y1+1);
+    const sum=I[(y2+1)*(w+1)+x2+1]-I[y1*(w+1)+x2+1]-I[(y2+1)*(w+1)+x1]+I[y1*(w+1)+x1];
+    const v=g[y*w+x]*cnt<=sum*(1-t)?0:255,o=(y*w+x)*4;d[o]=d[o+1]=d[o+2]=v}
+}
+
+// ---------- Επεξεργασία σελίδας: ίσιωμα → μισή σελίδα (βιβλίο) → περιστροφή → βελτίωση ----------
+async function processPage(p){
+  const im=await loadImg(p.orig);const[W,H]=dims(im);
+  const[ow,oh,P]=outSize(p.quad||FULL,W,H,2400);
+  let c=warp(im,P,ow,oh);
+  if(p.half){const hw=Math.floor(c.width/2),c2=cnv(p.half==='L'?hw:c.width-hw,c.height);c2.getContext('2d').drawImage(c,p.half==='L'?0:-hw,0);c.width=0;c=c2}
+  if(p.rot){const r=rotated(c,p.rot);c.width=0;c=r}
+  applyFilter(c,p.filter||'auto');
+  p.img=jpg(c,.86);p.w=c.width;p.h=c.height;c.width=c.height=0;
+  return p;
+}
+// ουρά επεξεργασίας, μία σελίδα τη φορά
+let procQ=Promise.resolve();
+function queue(d,p){p.img=null;const job=procQ.then(()=>processPage(p)).catch(e=>{console.warn(e);p.err=1}).then(async()=>{if(d.pages.includes(p))await saveDoc(d);if(cur&&cur.id===d.id)paintEdit();camThumb()});procQ=job;return job}
+
+// σελίδα με υπογραφές και σήμανση, για προβολή και εξαγωγή
+async function renderPage(p,d,max){
+  const im=await loadImg(p.img);const[w,h]=dims(im),k=Math.min(1,(max||99999)/Math.max(w,h));
+  const c=cnv(w*k,h*k),x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+  for(const s of p.stamps||[]){try{const si=await loadImg(s.src);const sw=s.w*c.width,sh=sw*si.naturalHeight/si.naturalWidth;x.drawImage(si,s.x*c.width,s.y*c.height,sw,sh)}catch(e){}}
+  if(d&&d.mark)drawMark(x,c.width,c.height,d.mark);
+  return c;
+}
+function drawMark(x,w,h,txt){
+  x.save();const fs=Math.max(14,Math.round(Math.min(w,h)/18));x.font='700 '+fs+'px system-ui,sans-serif';x.fillStyle='rgba(200,30,30,.30)';x.textAlign='center';x.textBaseline='middle';
+  x.translate(w/2,h/2);x.rotate(-Math.atan2(h,w)*.75);const tw=x.measureText(txt).width+fs*2,R=Math.hypot(w,h)/2;
+  for(let yy=-R;yy<=R;yy+=fs*4)for(let xx=-R-(yy/(fs*4)%2?tw/2:0);xx<=R;xx+=tw)x.fillText(txt,xx,yy);
+  x.restore();
+}
+
+// ---------- Αρχική: φάκελοι, αναζήτηση, λίστα ----------
+let curFolder='*';
+function folders(){const s=new Set(LS.get('folders',[]));docsCache.forEach(d=>d.folder&&s.add(d.folder));return[...s].sort((a,b)=>a.localeCompare(b,'el'))}
+function drawDocs(){
+  const fs=folders();if(curFolder!=='*'&&!fs.includes(curFolder))curFolder='*';
+  $('#chips').innerHTML=`<button class="sec${curFolder==='*'?' on':''}" data-fd="*">Όλα</button>`+fs.map(f=>`<button class="sec${curFolder===f?' on':''}" data-fd="${esc(f)}">📁 ${esc(f)}</button>`).join('')+`<button class="sec" data-fd="+">＋ Φάκελος</button>`;
+  const q=$('#q').value.trim().toLocaleLowerCase('el');const norm=s=>String(s||'').toLocaleLowerCase('el').normalize('NFD').replace(/[̀-ͯ]/g,'');const qn=norm(q);
+  let L=docsCache.filter(d=>(curFolder==='*'||d.folder===curFolder)&&(!qn||norm(d.name).includes(qn)||d.pages.some(p=>norm(p.text).includes(qn)))).sort((a,b)=>(b.upd||0)-(a.upd||0));
+  $('#docCount').textContent=docsCache.length?docsCache.length+(docsCache.length===1?' σάρωση':' σαρώσεις'):'';
+  $('#docs').innerHTML=L.length?L.map(d=>{const p=d.pages[0],th=p&&p.img?`style="background-image:url('${p.img}')"`:'';const hit=qn&&!norm(d.name).includes(qn);
+    return `<div class="d" data-id="${d.id}"><div class="th" ${th}>${th?'':'📄'}</div><div class="nm"><strong>${esc(d.name)}</strong><small>${d.pages.length} σελ. · ${fmtDate(d.upd||d.date)}${d.folder&&curFolder==='*'?' · 📁 '+esc(d.folder):''}${d.pages.some(x=>x.ocr)?'<span class="badge">κείμενο</span>':''}${hit?'<span class="badge">βρέθηκε στο κείμενο</span>':''}</small></div><button class="sec more" data-more="${d.id}" aria-label="Επιλογές">⋮</button></div>`}).join('')
+    :`<div class="empty">${docsCache.length?'Δεν βρέθηκε τίποτα.':'Δεν έχεις ακόμη σαρώσεις.<br>Πάτα «📷 Νέα σάρωση» για να ξεκινήσεις.'}</div>`;
+}
+$('#q').oninput=()=>drawDocs();
+$('#chips').onclick=e=>{const b=e.target.closest('[data-fd]');if(!b)return;const f=b.dataset.fd;
+  if(f==='+'){dlgOpen('Νέος φάκελος','<input type="text" id="fdIn" placeholder="π.χ. Λογαριασμοί, Συμβόλαια">',()=>{const v=$('#fdIn').value.trim();if(!v)return;const l=LS.get('folders',[]);if(!l.includes(v))l.push(v);LS.set('folders',l);curFolder=v;drawDocs()});setTimeout(()=>$('#fdIn').focus(),60);return}
+  curFolder=f;drawDocs()};
+$('#docs').onclick=e=>{const m=e.target.closest('[data-more]');if(m){docMenu(+m.dataset.more);return}const d=e.target.closest('[data-id]');if(d)openEdit(docsCache.find(x=>x.id===+d.dataset.id))};
+function docMenu(id){
+  const d=(cur&&cur.id===id)?cur:docsCache.find(x=>x.id===id);if(!d)return;
+  dlgOpen(d.name,`<div class="vlist"><button class="sec" data-a="open">📄 Άνοιγμα</button><button class="sec" data-a="ren">✏️ Μετονομασία</button><button class="sec" data-a="fold">📁 Μεταφορά σε φάκελο</button><button class="sec" data-a="exp">⬆ Εξαγωγή · Κοινοποίηση</button><button class="sec" data-a="dup">⧉ Αντίγραφο της σάρωσης</button><button class="sec" data-a="del" style="color:var(--bad)">🗑 Διαγραφή</button></div>`,null,{info:true,noOk:true,no:'Κλείσιμο'});
+  $('#dlgB').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;dlgClose();
+    if(a==='open')openEdit(d);
+    else if(a==='ren')renameDoc(d,()=>{if(cur===d)paintEdit()});
+    else if(a==='fold')moveDoc(d);
+    else if(a==='exp'){cur=d;exportDlg()}
+    else if(a==='dup'){const c=JSON.parse(JSON.stringify(d));c.id=uid();c.name=d.name+' (αντίγραφο)';c.date=new Date().toISOString();c.pages.forEach(p=>p.id=uid());await saveDoc(c);toast('Έγινε αντίγραφο')}
+    else if(a==='del'){if(confirm('Να διαγραφεί η σάρωση «'+d.name+'»;')){if(cur===d&&view!=='home'){await popLayer(view);if(view==='text')await popLayer('edit');leaveEdit()}await delDoc(d.id);toast('Διαγράφηκε')}}};
+}
+function renameDoc(d,after){dlgOpen('Όνομα σάρωσης',`<input type="text" id="rnIn" value="${esc(d.name)}">`,async()=>{const v=$('#rnIn').value.trim();if(v){d.name=v;d.autoName=false;await saveDoc(d);after&&after()}});setTimeout(()=>{const i=$('#rnIn');i.focus();i.select()},60)}
+function moveDoc(d){const fs=folders();dlgOpen('Φάκελος',`<div class="vlist">${['',...fs].map(f=>`<button class="sec" data-f="${esc(f)}">${f?'📁 '+esc(f):'Χωρίς φάκελο'}${(d.folder||'')===f?' ✓':''}</button>`).join('')}<input type="text" id="nfIn" placeholder="ή γράψε νέο φάκελο"></div>`,async()=>{const v=$('#nfIn').value.trim();if(v){d.folder=v;const l=LS.get('folders',[]);if(!l.includes(v)){l.push(v);LS.set('folders',l)}await saveDoc(d)}});
+  $('#dlgB').onclick=async e=>{const b=e.target.closest('[data-f]');if(!b)return;d.folder=b.dataset.f;dlgClose();await saveDoc(d);toast(d.folder?'Μπήκε στο 📁 '+d.folder:'Βγήκε από τον φάκελο')}}
+
+// ---------- Κάμερα ----------
+let camStream=null,camTrack=null,camDoc=null,camMode='doc',camTimer=null,lastQ=null,stableAt=0,lastShot=0,armed=true,torch=false,shooting=false,camNew=false;
+const MODE_HINT={doc:'Στόχευσε τη σελίδα — το κίτρινο πλαίσιο δείχνει τι βρήκε',card:'Μπροστινή όψη της κάρτας',book:'Ανοιχτό βιβλίο: οι δύο σελίδες χωρίζονται μόνες τους',board:'Πίνακας ή χαρτί με χρώματα'};
+async function openCam(d,mode){
+  camDoc=d||null;camNew=!d;camMode=mode||(d&&d.mode)||'doc';
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('#fCam').click();return}
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false})}
+  catch(e){toast('Δεν δόθηκε άδεια για την κάμερα — ανοίγει η κάμερα του κινητού');$('#fCam').click();return}
+  camTrack=camStream.getVideoTracks()[0];
+  try{const cp=camTrack.getCapabilities?camTrack.getCapabilities():{};
+    if(cp.focusMode&&cp.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});
+    $('#cTorch').classList.toggle('hidden',!cp.torch)}catch(e){}
+  const v=$('#vid');v.srcObject=camStream;await v.play().catch(()=>{});
+  $('#cam').classList.remove('hidden');pushLayer('cam');torch=false;$('#cTorch').classList.remove('on');
+  lastQ=null;stableAt=0;armed=true;paintCamUI();camThumb();
+  clearInterval(camTimer);camTimer=setInterval(camTick,220);
+}
+function camStop(){clearInterval(camTimer);camTimer=null;if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=camTrack=null;$('#vid').srcObject=null}
+async function camClose(fromPop){
+  camStop();$('#cam').classList.add('hidden');if(!fromPop)await popLayer('cam');
+  const d=camDoc;camDoc=null;if(!d)return;
+  if(!d.pages.length){if(camNew)await delDoc(d.id).catch(()=>{});return}
+  openEdit(d);
+  if(SET.ocr)setTimeout(()=>ocrDoc(d,true),400);
+}
+function paintCamUI(){
+  $$('#cModes button').forEach(b=>b.classList.toggle('on',b.dataset.m===camMode));$('#cAuto').classList.toggle('on',SET.auto);
+  const n=camDoc?camDoc.pages.length:0;
+  $('#cHint').textContent=camMode==='card'?(n%2===0?'🪪 Μπροστινή όψη της κάρτας':'🪪 Τώρα γύρισε την κάρτα — πίσω όψη'):MODE_HINT[camMode];
+  $('#cDone').textContent=n?'✓ Τέλος ('+n+')':'Τέλος';
+}
+function camThumb(){if(!camDoc)return;const p=camDoc.pages[camDoc.pages.length-1];const b=$('#cLast');b.style.backgroundImage=p&&p.img?`url('${p.img}')`:'none';b.textContent=camDoc.pages.length?camDoc.pages.length:'';paintCamUI()}
+$('#cModes').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;camMode=b.dataset.m;if(camDoc&&!camDoc.pages.length)camDoc.mode=camMode;paintCamUI()};
+$('#cAuto').onclick=()=>{SET.auto=!SET.auto;saveSet();$('#sAuto').checked=SET.auto;paintCamUI();toast(SET.auto?'Αυτόματη λήψη: ναι — κράτα σταθερά':'Αυτόματη λήψη: όχι — πάτα το κίτρινο κουμπί')};
+$('#cTorch').onclick=async()=>{torch=!torch;try{await camTrack.applyConstraints({advanced:[{torch}]})}catch(e){torch=false}$('#cTorch').classList.toggle('on',torch)};
+$('#cClose').onclick=()=>camClose(false);$('#cDone').onclick=()=>camClose(false);
+$('#cLast').onclick=()=>{if(camDoc&&camDoc.pages.length)camClose(false)};
+$('#cShot').onclick=()=>camShoot();
+function videoRect(){const v=$('#vid'),bw=v.clientWidth,bh=v.clientHeight,vw=v.videoWidth,vh=v.videoHeight;if(!vw)return null;const k=Math.min(bw/vw,bh/vh);return{x:(bw-vw*k)/2,y:(bh-vh*k)/2,w:vw*k,h:vh*k,bw,bh}}
+function camTick(){
+  const v=$('#vid');if(!v.videoWidth||shooting)return;
+  const q=detectQuad(v),now=Date.now();
+  if(q&&lastQ&&Math.max(...q.map((p,i)=>Math.hypot(p[0]-lastQ[i][0],p[1]-lastQ[i][1])))<.025){if(!stableAt)stableAt=now}else stableAt=0;
+  if(!q)armed=true;else if(!armed&&camDoc&&camDoc._lastQ&&Math.max(...q.map((p,i)=>Math.hypot(p[0]-camDoc._lastQ[i][0],p[1]-camDoc._lastQ[i][1])))>.12)armed=true;
+  lastQ=q;
+  const prog=stableAt?Math.min(1,(now-stableAt)/1100):0;
+  drawOverlay(q,prog);
+  if(SET.auto&&q&&armed&&prog>=1&&now-lastShot>1800)camShoot(q);
+}
+function drawOverlay(q,prog){
+  const c=$('#camOv'),r=videoRect();if(!r)return;const dpr=devicePixelRatio||1;
+  if(c.width!==Math.round(r.bw*dpr)||c.height!==Math.round(r.bh*dpr)){c.width=Math.round(r.bw*dpr);c.height=Math.round(r.bh*dpr)}
+  const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,r.bw,r.bh);if(!q)return;
+  x.beginPath();q.forEach(([a,b],i)=>{const X=r.x+a*r.w,Y=r.y+b*r.h;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.closePath();
+  const ok=prog>=1||(!SET.auto&&prog>0);x.fillStyle=ok?'rgba(47,138,74,.25)':'rgba(253,209,23,.22)';x.fill();x.lineWidth=3;x.strokeStyle=ok?'#4caf50':'#FDD117';x.stroke();
+  if(SET.auto&&prog>0&&prog<1&&armed){const cx=r.x+q.reduce((s,p)=>s+p[0],0)/4*r.w,cy=r.y+q.reduce((s,p)=>s+p[1],0)/4*r.h;x.beginPath();x.arc(cx,cy,26,-Math.PI/2,-Math.PI/2+prog*Math.PI*2);x.lineWidth=6;x.strokeStyle='#fff';x.stroke()}
+}
+async function camShoot(qLive){
+  if(shooting)return;shooting=true;$('#cShot').classList.add('busy');lastShot=Date.now();armed=false;
+  try{
+    const v=$('#vid');if(!v.videoWidth)throw 0;
+    const f=$('#flash');f.style.opacity=.85;setTimeout(()=>f.style.opacity=0,120);try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}
+    const c=fit(v,2600);
+    if(!camDoc){camDoc=newDoc(camMode);camNew=true}
+    camDoc._lastQ=qLive||lastQ;
+    addShot(camDoc,c,camMode,qLive);
+    await saveDoc(camDoc);paintCamUI();
+  }catch(e){toast('Η λήψη δεν έγινε — δοκίμασε ξανά')}
+  finally{shooting=false;$('#cShot').classList.remove('busy')}
+}
+// μία φωτογραφία → μία ή δύο σελίδες (βιβλίο)
+function addShot(d,c,mode,qHint){
+  const q=detectQuad(c)||qHint||(mode==='book'||mode==='doc'?FULL:INSET);
+  const orig=jpg(c,.9);c.width=c.height=0;
+  const base={orig,quad:q,rot:0,filter:mode==='board'?'vivid':(SET.filter||'auto'),text:'',conf:0,ocr:false,stamps:[]};
+  const L=mode==='book'?[{...base,id:uid(),half:'L'},{...base,id:uid()+1,half:'R'}]:[{...base,id:uid(),card:mode==='card'}];
+  L.forEach(p=>{d.pages.push(p);queue(d,p)});
+  return L;
+}
+$('#fCam').onchange=async e=>{const f=[...e.target.files];e.target.value='';if(!f.length)return;const d=camDoc||newDoc(camMode);camDoc=null;await importFiles(f,d,camMode);openEdit(d)};
+
+// ---------- Από φωτογραφίες ----------
+let galTarget=null;
+$('#bScan').onclick=()=>openCam(null,'doc');
+$('#bId').onclick=()=>openCam(null,'card');
+$('#bGal').onclick=()=>{galTarget=null;$('#fImg').click()};
+$('#fImg').onchange=async e=>{const f=[...e.target.files];e.target.value='';if(!f.length)return;const d=galTarget||newDoc('doc');galTarget=null;await importFiles(f,d,d.mode||'doc');openEdit(d)};
+async function importFiles(files,d,mode){
+  stopFlag=false;busy('Εισαγωγή φωτογραφιών','',0);
+  try{for(let i=0;i<files.length&&!stopFlag;i++){busy(null,'Φωτογραφία '+(i+1)+' από '+files.length,i/files.length);
+      try{const c=await fileToCanvas(files[i]);addShot(d,c,mode==='card'?'card':mode==='book'?'book':'doc')}catch(e){toast('Μία φωτογραφία δεν διαβάστηκε')}await sleep(10)}
+    await saveDoc(d)}finally{busy(false)}
+}
+
+// ---------- Επεξεργασία σάρωσης ----------
+let cur=null,ci=0;
+function openEdit(d){if(!d)return;cur=d;ci=Math.min(ci,Math.max(0,d.pages.length-1));if(view!=='edit')ci=0;show('edit');paintEdit()}
+function leaveEdit(){if(sigPlacing)sigEnd(false,true);cur=null;show('home')}
+$('#eBack').onclick=async()=>{await popLayer('edit');leaveEdit()};
+$('#eName').onclick=()=>renameDoc(cur,paintEdit);
+$('#eMore').onclick=()=>docMenu(cur.id);
+let pvToken=0;
+async function paintEdit(){
+  const d=cur;if(!d)return;$('#eName').textContent=d.name;
+  if(!d.pages.length){$('#pvImg').classList.add('hidden');$('#pvWait').classList.remove('hidden');$('#pvWait').textContent='Δεν υπάρχουν σελίδες — πάτα ➕';$('#pgNo').textContent=''}
+  ci=Math.max(0,Math.min(ci,d.pages.length-1));const p=d.pages[ci];
+  $('#strip').innerHTML=d.pages.map((x,i)=>`<button class="t${i===ci?' on':''}" data-i="${i}" style="${x.img?`background-image:url('${x.img}')`:''}">${x.img?'':'⏳'}<i>${i+1}</i></button>`).join('')+`<button class="t add" id="addPg" aria-label="Προσθήκη σελίδας">➕</button>`;
+  const on=$('#strip .t.on');on&&on.scrollIntoView({inline:'center',block:'nearest'});
+  $$('#flt [data-f]').forEach(b=>b.classList.toggle('on',p&&b.dataset.f===p.filter));
+  ['#tLeft','#tRight','#tDel','#tCrop','#tRot','#tSig'].forEach(s=>$(s).disabled=!p);$('#tLeft').disabled=!p||ci===0;$('#tRight').disabled=!p||ci>=d.pages.length-1;
+  if(!p)return;
+  $('#pgNo').textContent='Σελίδα '+(ci+1)+' / '+d.pages.length+(p.card?' · κάρτα':'');
+  if(!p.img){$('#pvImg').classList.add('hidden');$('#pvWait').classList.remove('hidden');$('#pvWait').textContent=p.err?'⚠️ Η σελίδα δεν επεξεργάστηκε':'⏳ Επεξεργασία σελίδας…';return}
+  $('#pvWait').classList.add('hidden');$('#pvImg').classList.remove('hidden');
+  const t=++pvToken;
+  if((p.stamps&&p.stamps.length)||d.mark){const c=await renderPage(p,d,1600);if(t!==pvToken)return;$('#pvImg').src=jpg(c,.85);c.width=0}else $('#pvImg').src=p.img;
+}
+$('#strip').onclick=e=>{if(e.target.closest('#addPg')){addPageMenu();return}const b=e.target.closest('[data-i]');if(b){ci=+b.dataset.i;paintEdit()}};
+// σύρσιμο αριστερά/δεξιά για αλλαγή σελίδας
+(()=>{let x0=null,y0=0;const w=$('#pvWrap');w.addEventListener('touchstart',e=>{if(sigPlacing)return;x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+  w.addEventListener('touchend',e=>{if(x0==null||!cur)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){const n=ci+(dx<0?1:-1);if(n>=0&&n<cur.pages.length){ci=n;paintEdit()}}})})();
+function addPageMenu(){dlgOpen('Προσθήκη σελίδων','<div class="vlist"><button class="sec" data-a="cam">📷 Κάμερα</button><button class="sec" data-a="gal">🖼️ Από φωτογραφίες</button></div>',null,{info:true,noOk:true,no:'Κλείσιμο'});
+  $('#dlgB').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;dlgClose();const d=cur;if(b.dataset.a==='cam'){ci=d.pages.length;openCam(d,d.mode||'doc')}else{galTarget=d;$('#fImg').click()}}}
+$('#flt').onclick=async e=>{const b=e.target.closest('[data-f]');if(!b||!cur)return;const p=cur.pages[ci];if(!p)return;
+  if(b.dataset.f==='all'){const f=p.filter;let n=0;for(const x of cur.pages)if(x!==p&&x.filter!==f){x.filter=f;queue(cur,x);n++}toast(n?'«'+FILTERS[f]+'» σε όλες τις σελίδες':'Όλες έχουν ήδη «'+FILTERS[f]+'»');paintEdit();return}
+  if(p.filter===b.dataset.f)return;p.filter=b.dataset.f;queue(cur,p);paintEdit()};
+$('#tRot').onclick=()=>{const p=cur.pages[ci];p.rot=((p.rot||0)+90)%360;queue(cur,p);paintEdit()};
+$('#tLeft').onclick=()=>movePg(-1);$('#tRight').onclick=()=>movePg(1);
+function movePg(k){const P=cur.pages,j=ci+k;if(j<0||j>=P.length)return;[P[ci],P[j]]=[P[j],P[ci]];ci=j;saveDoc(cur);paintEdit()}
+$('#tDel').onclick=async()=>{if(!confirm('Να σβηστεί η σελίδα '+(ci+1)+';'))return;cur.pages.splice(ci,1);ci=Math.max(0,ci-1);await saveDoc(cur);paintEdit();toast('Η σελίδα σβήστηκε')};
+$('#tCrop').onclick=()=>{const p=cur.pages[ci];if(p)cropOpen(p)};
+$('#tOcr').onclick=()=>{if(!cur.pages.length)return;if(cur.pages.every(p=>p.ocr))openText();else ocrDoc(cur,false).then(ok=>ok&&openText())};
+$('#tMark').onclick=()=>markDlg();
+$('#bExport').onclick=()=>exportDlg();
+
+// ---------- Περικοπή γωνιών με μεγεθυντικό φακό ----------
+let crP=null,crQ=null,crImg=null,crR=null;
+async function cropOpen(p){
+  crP=p;crQ=(p.quad||FULL).map(a=>a.slice());crImg=await loadImg(p.orig);
+  $('#crop').classList.remove('hidden');pushLayer('crop');requestAnimationFrame(cropLayout);
+}
+function cropLayout(){
+  const A=$('#cropArea'),aw=A.clientWidth,ah=A.clientHeight;let[W,H]=dims(crImg);
+  // η αρχική φωτογραφία φαίνεται με την περιστροφή της σελίδας για να μην μπερδεύεται ο χρήστης· οι γωνίες μένουν στην αρχική
+  const k=Math.min(aw/W,ah/H),w=W*k,h=H*k,c=$('#cropImg'),dpr=devicePixelRatio||1;
+  c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';c.style.left=(aw-w)/2+'px';c.style.top=(ah-h)/2+'px';
+  c.getContext('2d').drawImage(crImg,0,0,c.width,c.height);crR={x:(aw-w)/2,y:(ah-h)/2,w,h};
+  const s=$('#cropSvg');s.setAttribute('width',aw);s.setAttribute('height',ah);cropDraw();
+}
+function cropDraw(){if(!crR)return;$('#cropPoly').setAttribute('points',crQ.map(([a,b])=>(crR.x+a*crR.w)+','+(crR.y+b*crR.h)).join(' '));
+  $$('#crop .h').forEach(h=>{const[a,b]=crQ[+h.dataset.i];h.style.left=(crR.x+a*crR.w)+'px';h.style.top=(crR.y+b*crR.h)+'px'})}
+(()=>{let drag=-1;
+  $$('#crop .h').forEach(h=>{
+    h.addEventListener('pointerdown',e=>{drag=+h.dataset.i;h.setPointerCapture(e.pointerId);$('#mag').classList.remove('hidden');e.preventDefault()});
+    h.addEventListener('pointermove',e=>{if(drag<0)return;const A=$('#cropArea').getBoundingClientRect();
+      const a=Math.max(0,Math.min(1,(e.clientX-A.left-crR.x)/crR.w)),b=Math.max(0,Math.min(1,(e.clientY-A.top-crR.y)/crR.h));crQ[drag]=[a,b];cropDraw();magDraw(a,b,e.clientX-A.left,e.clientY-A.top)});
+    const end=()=>{drag=-1;$('#mag').classList.add('hidden')};h.addEventListener('pointerup',end);h.addEventListener('pointercancel',end)});
+})();
+function magDraw(a,b,px,py){
+  const m=$('#mag'),x=m.getContext('2d'),[W,H]=dims(crImg),r=m.width/2;
+  x.clearRect(0,0,m.width,m.height);x.save();x.beginPath();x.arc(r,r,r,0,7);x.clip();
+  // τριπλή μεγέθυνση: ο φακός (120 εικονοστοιχεία) δείχνει 40 εικονοστοιχεία της οθόνης γύρω από το δάχτυλο
+  const sw=40*W/crR.w,sx=a*W-sw/2,sy=b*H-sw/2;x.fillStyle='#000';x.fillRect(0,0,m.width,m.height);x.drawImage(crImg,sx,sy,sw,sw,0,0,m.width,m.height);
+  x.strokeStyle='#FDD117';x.lineWidth=3;x.beginPath();x.moveTo(r-24,r);x.lineTo(r+24,r);x.moveTo(r,r-24);x.lineTo(r,r+24);x.stroke();x.restore();
+  const A=$('#cropArea');m.style.left=(px<A.clientWidth/2?A.clientWidth-130:10)+'px';m.style.top='10px';
+}
+addEventListener('resize',()=>{if(!$('#crop').classList.contains('hidden'))cropLayout()});
+$('#crAuto').onclick=()=>{const c=fit(crImg,1200);const q=detectQuad(c);c.width=0;if(q){crQ=q;cropDraw();toast('Βρέθηκε η σελίδα')}else toast('Δεν βρέθηκε καθαρά — σύρε τις γωνίες με το χέρι')};
+$('#crFull').onclick=()=>{crQ=FULL.map(a=>a.slice());cropDraw()};
+$('#crNo').onclick=()=>cropClose(false);
+$('#crOk').onclick=()=>cropClose(true);
+function cropClose(ok,fromPop){
+  $('#crop').classList.add('hidden');$('#mag').classList.add('hidden');
+  if(ok&&crP){if(!convex(crQ)){toast('Οι γωνίες μπερδεύτηκαν — δοκίμασε ξανά');}else{crP.quad=crQ;queue(cur,crP);paintEdit()}}
+  crP=null;crImg=null;if(!fromPop)popLayer('crop');
+}
+
+// ---------- Υπογραφή ----------
+const getSig=()=>LS.get('sig',null);
+function sigState(){$('#sigState').textContent=getSig()?'αποθηκευμένη':'δεν έχεις φτιάξει'}
+function sigDialog(then){
+  const old=getSig();
+  dlgOpen('Η υπογραφή μου',`<p class="muted">Υπόγραψε με το δάχτυλο μέσα στο πλαίσιο. Μένει μόνο στο κινητό σου.</p><canvas id="sigPad"></canvas><div class="row" style="margin-top:8px"><button class="sec" id="spClear">Καθαρισμός</button>${old?'<button class="sec" id="spDel" style="color:var(--bad)">Διαγραφή υπογραφής</button>':''}</div>`,()=>{
+    const c=$('#sigPad');if(!c._drawn){if(!old)toast('Δεν υπέγραψες');then&&old&&then();return}
+    const x=c.getContext('2d'),d=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=0,y1=0;
+    for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++)if(d[(y*c.width+xx)*4+3]>20){if(xx<x0)x0=xx;if(xx>x1)x1=xx;if(y<y0)y0=y;if(y>y1)y1=y}
+    if(x1<=x0)return;const o=cnv(x1-x0+12,y1-y0+12);o.getContext('2d').drawImage(c,x0-6,y0-6,o.width,o.height,0,0,o.width,o.height);
+    LS.set('sig',o.toDataURL('image/png'));sigState();toast('Η υπογραφή αποθηκεύτηκε');then&&setTimeout(then,50)});
+  const c=$('#sigPad'),dpr=devicePixelRatio||1;c.width=c.clientWidth*dpr;c.height=c.clientHeight*dpr;const x=c.getContext('2d');
+  x.lineCap=x.lineJoin='round';x.lineWidth=3.2*dpr;x.strokeStyle='#10215c';let dn=false,lp=null;
+  const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*dpr,(e.clientY-r.top)*dpr]};
+  c.onpointerdown=e=>{dn=true;lp=pt(e);c.setPointerCapture(e.pointerId)};
+  c.onpointermove=e=>{if(!dn)return;const p=pt(e);x.beginPath();x.moveTo(lp[0],lp[1]);x.lineTo(p[0],p[1]);x.stroke();lp=p;c._drawn=true};
+  c.onpointerup=c.onpointercancel=()=>dn=false;
+  $('#spClear').onclick=()=>{x.clearRect(0,0,c.width,c.height);c._drawn=false};
+  if(old)$('#spDel').onclick=()=>{if(confirm('Να διαγραφεί η αποθηκευμένη υπογραφή;')){LS.set('sig',null);sigState();dlgClose()}};
+}
+$('#bSig').onclick=()=>sigDialog();
+let sigPlacing=false,sg={x:.55,y:.75,w:.3};
+$('#tSig').onclick=()=>{const p=cur.pages[ci];if(!p||!p.img)return;
+  if(p.stamps&&p.stamps.length){dlgOpen('Υπογραφή','<div class="vlist"><button class="sec" data-a="add">✍️ Νέα υπογραφή στη σελίδα</button><button class="sec" data-a="rm" style="color:var(--bad)">Αφαίρεση υπογραφών από τη σελίδα</button></div>',null,{info:true,noOk:true,no:'Κλείσιμο'});
+    $('#dlgB').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;dlgClose();if(b.dataset.a==='rm'){p.stamps=[];await saveDoc(cur);paintEdit()}else sigStart()};return}
+  sigStart()};
+function sigStart(){const s=getSig();if(!s){sigDialog(sigStart);return}
+  sigPlacing=true;pushLayer('sig');$('#sigBox img').src=s;$('#sigBox').classList.remove('hidden');$('#sigBar').classList.remove('hidden');$('#eMain').classList.add('hidden');sgPos()}
+function sgPos(){const i=$('#pvImg'),w=$('#pvWrap').getBoundingClientRect(),r=i.getBoundingClientRect(),b=$('#sigBox');
+  sg.x=Math.max(0,Math.min(1-sg.w,sg.x));sg.y=Math.max(0,Math.min(.97,sg.y));
+  b.style.left=(r.left-w.left+sg.x*r.width)+'px';b.style.top=(r.top-w.top+sg.y*r.height)+'px';b.style.width=(sg.w*r.width)+'px'}
+(()=>{const b=$('#sigBox');let st=null;
+  b.addEventListener('pointerdown',e=>{st={x:e.clientX,y:e.clientY,sx:sg.x,sy:sg.y};b.setPointerCapture(e.pointerId);e.preventDefault()});
+  b.addEventListener('pointermove',e=>{if(!st)return;const r=$('#pvImg').getBoundingClientRect();sg.x=st.sx+(e.clientX-st.x)/r.width;sg.y=st.sy+(e.clientY-st.y)/r.height;sgPos()});
+  b.addEventListener('pointerup',()=>st=null);b.addEventListener('pointercancel',()=>st=null)})();
+$('#sgSmall').onclick=()=>{sg.w=Math.max(.08,sg.w/1.15);sgPos()};$('#sgBig').onclick=()=>{sg.w=Math.min(.9,sg.w*1.15);sgPos()};
+$('#sgCancel').onclick=()=>sigEnd(false);$('#sgOk').onclick=()=>sigEnd(true);
+async function sigEnd(ok,fromPop){
+  if(!sigPlacing)return;sigPlacing=false;$('#sigBox').classList.add('hidden');$('#sigBar').classList.add('hidden');$('#eMain').classList.remove('hidden');
+  if(!fromPop)await popLayer('sig');
+  if(ok&&cur){const p=cur.pages[ci];p.stamps=p.stamps||[];p.stamps.push({src:getSig(),x:sg.x,y:sg.y,w:sg.w});await saveDoc(cur);paintEdit();toast('Η υπογραφή μπήκε')}
+}
+
+// ---------- Σήμανση αντιγράφου ----------
+function markDlg(){
+  const d=cur;const sugg=['ΑΝΤΙΓΡΑΦΟ','ΜΟΝΟ ΓΙΑ ΤΗΝ ΤΡΑΠΕΖΑ','ΜΟΝΟ ΓΙΑ ΤΗΝ ΜΙΣΘΩΣΗ','ΔΕΝ ΙΣΧΥΕΙ ΓΙΑ ΑΛΛΗ ΧΡΗΣΗ'];
+  dlgOpen('🏷️ Σήμανση αντιγράφου',`<p class="muted">Γράφεται διαγώνια, αχνά, πάνω σε όλες τις σελίδες. Χρήσιμο όταν στέλνεις αντίγραφο ταυτότητας ή διαβατηρίου, για να μη χρησιμοποιηθεί για άλλο σκοπό.</p>
+    <input type="text" id="mkIn" value="${esc(d.mark||'')}" placeholder="π.χ. ΜΟΝΟ ΓΙΑ ΤΗΝ ΤΡΑΠΕΖΑ Χ">
+    <div class="vlist" style="margin-top:8px">${sugg.map(s=>`<button class="sec" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+    <label class="chk"><input type="checkbox" id="mkDate" checked><span>Πρόσθεσε τη σημερινή ημερομηνία</span></label>`,async()=>{
+      let v=$('#mkIn').value.trim();if(v&&$('#mkDate').checked&&!/\d{1,2}\/\d{1,2}\/\d{2,4}/.test(v))v+=' · '+new Date().toLocaleDateString('el-GR');
+      d.mark=v;await saveDoc(d);paintEdit();toast(v?'Η σήμανση μπήκε':'Η σήμανση αφαιρέθηκε')},{ok:'Εφαρμογή'});
+  $('#dlgB').onclick=e=>{const b=e.target.closest('[data-s]');if(b)$('#mkIn').value=b.dataset.s};
+}
+
+// ---------- Αναγνώριση κειμένου ----------
+let worker=null,workerLang='';
+async function getWorker(){
+  for(let i=0;i<40&&!window.Tesseract;i++)await sleep(150);
+  if(!window.Tesseract)throw new Error('nolib');
+  if(worker&&workerLang===SET.lang)return worker;
+  if(worker){await worker.terminate();worker=null}
+  busy(null,'Φόρτωση λεξικών γλώσσας (μόνο την πρώτη φορά αργεί)…',0);
+  worker=await Tesseract.createWorker(SET.lang,1,{logger:m=>{if(m.status&&m.status.includes('loading'))busy(null,'Φόρτωση λεξικών… '+Math.round((m.progress||0)*100)+'%',m.progress||0)}});
+  workerLang=SET.lang;return worker;
+}
+function fixText(t){return t.replace(/\r/g,'').replace(/(\p{L})-\n(\p{Ll})/gu,'$1$2').replace(/([^\n.!;:·»)])\n(?!\n)(?=\S)/gu,'$1 ').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim()}
+async function ocrPage(w,p){
+  const im=await loadImg(p.img);const[W,H]=dims(im);const c=cnv(W,H),x=c.getContext('2d');x.drawImage(im,0,0);
+  if(p.filter!=='bw'){const id=x.getImageData(0,0,W,H),d=id.data,g=new Uint8ClampedArray(W*H);for(let i=0;i<W*H;i++)g[i]=d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114;adaptiveInto(g,W,H,d);x.putImageData(id,0,0)}
+  const{data}=await w.recognize(c,{},{text:true,blocks:true});c.width=0;
+  const lines=[],words=[];(data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(pa=>(pa.lines||[]).forEach(l=>{lines.push(l);(l.words||[]).forEach(wd=>words.push(wd))})));
+  const good=lines.filter(l=>{const t=(l.text||'').trim();if(!t)return false;const L=(t.match(/\p{L}|\p{N}/gu)||[]).length;return l.confidence>=40&&L>=Math.min(2,t.length*.4)});
+  const conf=good.length?good.reduce((a,l)=>a+l.confidence*l.text.length,0)/good.reduce((a,l)=>a+l.text.length,0):0;
+  p.text=fixText(good.length?good.map(l=>l.text.replace(/\n$/,'')).join('\n'):(data.text||''));p.conf=Math.round(conf);p.ocr=true;
+  p.words=words.filter(wd=>wd.confidence>=35&&(wd.text||'').trim()).map(wd=>{const b=wd.bbox;return[wd.text.trim(),+(b.x0/W).toFixed(4),+(b.y0/H).toFixed(4),+((b.x1-b.x0)/W).toFixed(4),+((b.y1-b.y0)/H).toFixed(4)]});
+}
+async function ocrDoc(d,quiet,force){
+  await procQ;const todo=d.pages.filter(p=>p.img&&(force||!p.ocr));if(!todo.length)return true;
+  stopFlag=false;busy('🔤 Αναγνώριση κειμένου','',0);
+  try{const w=await getWorker();
+    for(let i=0;i<todo.length&&!stopFlag;i++){busy(null,'Σελίδα '+(i+1)+' από '+todo.length,i/todo.length);await ocrPage(w,todo[i]);if(d.autoName)autoName(d)}
+    await saveDoc(d);if(cur&&cur.id===d.id)paintEdit();if(!quiet)toast(stopFlag?'Σταμάτησε':'Το κείμενο αναγνωρίστηκε');return !stopFlag;
+  }catch(e){console.warn(e);toast(navigator.onLine?'Η αναγνώριση δεν ολοκληρώθηκε':'Χρειάζεται σύνδεση την πρώτη φορά, για τα λεξικά γλώσσας');return false}
+  finally{busy(false)}
+}
+// όνομα από την πρώτη καθαρή γραμμή της πρώτης σελίδας
+function autoName(d){const t=(d.pages[0]&&d.pages[0].text)||'';const ln=t.split('\n').map(s=>s.replace(/[|_~*#=<>]+/g,' ').replace(/\s+/g,' ').trim()).find(s=>s.length>=6&&s.length<=60&&(s.match(/\p{L}{3,}/gu)||[]).length>=2);
+  if(ln){d.name=ln.length>48?ln.slice(0,48).replace(/\s\S*$/,'')+'…':ln;d.autoName=false}}
+function allText(d){return d.pages.map((p,i)=>(d.pages.length>1?'— Σελίδα '+(i+1)+' —\n':'')+(p.text||'')).join('\n\n').trim()}
+function openText(){const d=cur;$('#txtOut').value=allText(d);const lo=d.pages.filter(p=>p.ocr&&p.conf<60).length;
+  $('#xNote').textContent=lo?'Σε '+lo+(lo===1?' σελίδα':' σελίδες')+' η αναγνώριση δεν ήταν σίγουρη — έλεγξε το κείμενο. Καλύτερο αποτέλεσμα με καλό φως και «Καθαρό» ή «Ασπρόμαυρο».':'';
+  $('#xRead').classList.toggle('hidden',!sameSite());show('text')}
+$('#xBack').onclick=async()=>{await popLayer('text');show('edit')};
+$('#xCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('#txtOut').value);toast('Αντιγράφηκε')}catch(e){$('#txtOut').select();document.execCommand('copy');toast('Αντιγράφηκε')}};
+$('#xShare').onclick=async()=>{const t=$('#txtOut').value;if(navigator.share){try{await navigator.share({title:cur.name,text:t})}catch(e){}}else{$('#xCopy').click()}};
+$('#xAgain').onclick=async()=>{if(await ocrDoc(cur,false,true))openText()};
+// ---------- Γέφυρα προς το GlenRead (ίδια διεύθυνση aglentzakis-dot.github.io) ----------
+const sameSite=()=>/(^|\.)aglentzakis-dot\.github\.io$/.test(location.hostname);
+$('#xRead').onclick=async()=>{
+  try{const gdb=await new Promise((ok,no)=>{const r=indexedDB.open('glenread',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('docs'))r.result.createObjectStore('docs',{keyPath:'id'})};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+    const doc={id:Date.now(),date:new Date().toISOString(),name:cur.name,from:'glenscanner',pages:cur.pages.map(p=>({text:p.text||'',conf:p.conf||0,ocr:true}))};
+    await new Promise((ok,no)=>{const tx=gdb.transaction('docs','readwrite');tx.objectStore('docs').put(doc);tx.oncomplete=ok;tx.onerror=()=>no(tx.error)});gdb.close();
+    toast('Μπήκε στα «Πρόσφατα» του GlenRead');setTimeout(()=>window.open('/GlenRead/','_blank'),600);
+  }catch(e){toast('Δεν έγινε — δοκίμασε «Κοινοποίηση»')}
+};
+
+// ---------- Εξαγωγή: PDF, φωτογραφίες, κείμενο ----------
+const EXP=Object.assign({fmt:'pdf',size:'auto',q:'mid',text:true},LS.get('exp',{}));
+const QUAL={small:[1400,.6,'Μικρό'],mid:[2000,.75,'Κανονικό'],high:[2600,.9,'Υψηλό']};
+const SIZES={auto:'Όπως η σελίδα',a4:'A4',letter:'Letter'};
+function exportDlg(){
+  const d=cur;if(!d||!d.pages.length)return toast('Δεν υπάρχουν σελίδες');
+  const seg=(k,o,cls)=>`<div class="opts ${cls||'c3'}">${Object.entries(o).map(([v,t])=>`<button class="sec${EXP[k]===v?' on':''}" data-k="${k}" data-v="${v}">${t}</button>`).join('')}</div>`;
+  dlgOpen('⬆ Εξαγωγή · '+d.name,`
+    <b>Μορφή</b>${seg('fmt',{pdf:'📄 PDF',jpg:'🖼️ Φωτογραφίες',txt:'🔤 Κείμενο'})}
+    <div id="exPdf"><b>Μέγεθος σελίδας</b>${seg('size',SIZES)}</div>
+    <div id="exQ"><b>Ποιότητα / μέγεθος αρχείου</b>${seg('q',{small:'Μικρό',mid:'Κανονικό',high:'Υψηλό'})}</div>
+    <div id="exPdf2"><label class="chk"><input type="checkbox" id="exTxt" ${EXP.text?'checked':''}><span>Κείμενο με αναζήτηση μέσα στο PDF${d.pages.every(p=>p.ocr)?'':' (θα γίνει αναγνώριση κειμένου)'}</span></label>
+    <input type="password" id="exPw" placeholder="Κωδικός για το PDF (προαιρετικά)" autocomplete="new-password">
+    <p class="muted" style="margin:4px 0 0">Ο κωδικός δίνει βασική προστασία· για πολύ ευαίσθητα έγγραφα μη βασίζεσαι μόνο σε αυτόν.</p></div>
+    <p class="muted" id="exInfo">${d.pages.filter(p=>p.card).length>1?'🪪 Οι όψεις της κάρτας μπαίνουν ανά δύο σε μία σελίδα Α4, σε πραγματικό μέγεθος.':''}</p>
+    <div class="row"><button id="exShare" style="flex:1">📤 Κοινοποίηση</button><button class="sec" id="exSave" style="flex:1">💾 Αποθήκευση</button></div>`,null,{info:true,noOk:true,no:'Κλείσιμο'});
+  const vis=()=>{$('#exPdf').classList.toggle('hidden',EXP.fmt!=='pdf');$('#exPdf2').classList.toggle('hidden',EXP.fmt!=='pdf');$('#exQ').classList.toggle('hidden',EXP.fmt==='txt')};vis();
+  $('#dlgB').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;EXP[b.dataset.k]=b.dataset.v;LS.set('exp',EXP);$$(`#dlgB [data-k="${b.dataset.k}"]`).forEach(x=>x.classList.toggle('on',x===b));vis()};
+  $('#exTxt').onchange=e=>{EXP.text=e.target.checked;LS.set('exp',EXP)};
+  $('#exShare').onclick=()=>doExport(true);$('#exSave').onclick=()=>doExport(false);
+}
+async function doExport(share){
+  const d=cur,pw=($('#exPw')||{}).value||'';
+  try{
+    await procQ;if(d.pages.some(p=>!p.img))return toast('Περίμενε να τελειώσει η επεξεργασία των σελίδων');
+    if(EXP.fmt==='txt'||(EXP.fmt==='pdf'&&EXP.text)){if(!(await ocrDoc(d,true))&&EXP.fmt==='txt')return}
+    stopFlag=false;let files=[];
+    if(EXP.fmt==='pdf'){const b=await buildPdf(d,{size:EXP.size,q:EXP.q,text:EXP.text,pw});if(!b)return;files=[new File([b],safeName(d.name)+'.pdf',{type:'application/pdf'})]}
+    else if(EXP.fmt==='jpg'){busy('Φωτογραφίες','',0);const Q=QUAL[EXP.q];
+      for(let i=0;i<d.pages.length&&!stopFlag;i++){busy(null,'Σελίδα '+(i+1),i/d.pages.length);const c=await renderPage(d.pages[i],d,Q[0]);const b=await new Promise(r=>c.toBlob(r,'image/jpeg',Q[1]));c.width=0;files.push(new File([b],safeName(d.name)+(d.pages.length>1?'-'+(i+1):'')+'.jpg',{type:'image/jpeg'}))}busy(false)}
+    else files=[new File([allText(d)],safeName(d.name)+'.txt',{type:'text/plain'})];
+    if(stopFlag||!files.length)return;
+    const total=files.reduce((a,f)=>a+f.size,0);$('#exInfo')&&($('#exInfo').textContent='Μέγεθος: '+kb(total));
+    if(share){
+      if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:d.name})}catch(e){if(e.name!=='AbortError')toast('Η κοινοποίηση δεν έγινε')}return}
+      toast('Το κινητό δεν κοινοποιεί αρχεία από εδώ — έγινε αποθήκευση');
+    }
+    await saveFiles(files);
+  }catch(e){console.warn(e);toast('Κάτι πήγε στραβά στην εξαγωγή');busy(false)}
+}
+async function saveFiles(files){
+  try{const dir=await appDir(true);if(dir){const ed=await dir.getDirectoryHandle('Έγγραφα',{create:true});
+      for(const f of files){const h=await ed.getFileHandle(f.name,{create:true});const w=await h.createWritable();await w.write(f);await w.close()}
+      toast('Αποθηκεύτηκε στο GlenApps › GlenScanner › Έγγραφα · '+kb(files.reduce((a,f)=>a+f.size,0)));return}}catch(e){console.warn(e)}
+  for(const f of files){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);await sleep(300)}
+  toast('Κατέβηκε στις Λήψεις · '+kb(files.reduce((a,f)=>a+f.size,0)));
+}
+let fontB64=null;
+async function fontData(){if(fontB64)return fontB64;const b=new Uint8Array(await (await fetch('grammata.ttf')).arrayBuffer());let s='';for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));return fontB64=btoa(s)}
+async function buildPdf(d,o,noEnc){
+  if(!window.jspdf)throw new Error('nolib');
+  const{jsPDF}=window.jspdf,Q=QUAL[o.q],withText=o.text&&d.pages.some(p=>p.words&&p.words.length);
+  const font=withText?await fontData().catch(()=>null):null;
+  // ομάδες σελίδων: οι όψεις κάρτας μπαίνουν ανά δύο σε μία σελίδα A4
+  const G=[];for(let i=0;i<d.pages.length;i++){const p=d.pages[i];if(p.card&&d.pages[i+1]&&d.pages[i+1].card){G.push([p,d.pages[i+1]]);i++}else G.push([p])}
+  let pdf=null;stopFlag=false;busy('📄 Δημιουργία PDF','',0);
+  try{
+    for(let gi=0;gi<G.length&&!stopFlag;gi++){busy(null,'Σελίδα '+(gi+1)+' από '+G.length,gi/G.length);const g=G[gi];
+      let pw,ph,places=[];
+      if(g[0].card){pw=210;ph=297;let y=30;for(const p of g){const iw=85.6,ih=iw*p.h/p.w;places.push([p,(pw-iw)/2,y,iw,ih]);y+=ih+20}}
+      else{const p=g[0],ar=p.h/p.w;
+        if(o.size==='auto'){pw=ar>=1?210:297;ph=pw*ar;places.push([p,0,0,pw,ph])}
+        else{let[A,B]=o.size==='letter'?[215.9,279.4]:[210,297];if(ar<1)[A,B]=[B,A];pw=A;ph=B;const k=Math.min(pw/p.w,ph/p.h),iw=p.w*k,ih=p.h*k;places.push([p,(pw-iw)/2,(ph-ih)/2,iw,ih])}}
+      const ori=pw>ph?'l':'p';
+      if(!pdf){const opt={unit:'mm',format:[pw,ph],orientation:ori,compress:true};if(o.pw&&!noEnc)opt.encryption={userPassword:o.pw,ownerPassword:o.pw+'·glen',userPermissions:['print','copy']};pdf=new jsPDF(opt);
+        pdf.setProperties({title:d.name,creator:'GlenScanner · GlenApps',producer:'GlenScanner'});
+        if(font){pdf.addFileToVFS('grammata.ttf',font);pdf.addFont('grammata.ttf','grammata','normal')}}
+      else pdf.addPage([pw,ph],ori);
+      for(const[p,x,y,iw,ih]of places){
+        const c=await renderPage(p,d,Q[0]);pdf.addImage(jpg(c,Q[1]),'JPEG',x,y,iw,ih,undefined,'FAST');c.width=0;
+        if(font&&p.words&&p.words.length){pdf.setFont('grammata','normal');
+          for(const[t,wx,wy,ww,wh]of p.words){const hm=wh*ih;if(hm<=0)continue;let fs=hm*2.83;pdf.setFontSize(fs);const tw=pdf.getTextWidth(t);if(tw>0)fs=Math.max(fs*.5,Math.min(fs*2,fs*(ww*iw)/tw));pdf.setFontSize(fs);
+            try{pdf.text(t,x+wx*iw,y+wy*ih+hm*.82,{renderingMode:'invisible',baseline:'alphabetic'})}catch(e){}}}
+      }
+      await sleep(5);
+    }
+    if(stopFlag)return null;
+    return pdf.output('blob');
+  }catch(e){
+    if(o.pw&&!noEnc){console.warn(e);toast('Ο κωδικός δεν μπήκε σε αυτό το κινητό — φτιάχνεται PDF χωρίς κωδικό');return buildPdf(d,o,true)}
+    throw e;
+  }finally{busy(false)}
+}
+
+// ---------- Αντίγραφα ασφαλείας (κοινή λογική GlenApps) ----------
+// GlenApps › GlenScanner στον φάκελο του κινητού· δικό της κλειδί «glenscanner-root»
+const BK={app:'glenscanner',folder:'GlenScanner',prefix:'glenscanner-antigrafo',key:'glenscanner-root'};
+const hdb=()=>new Promise((ok,no)=>{const r=indexedDB.open('shared-backups',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function hget(){try{const d=await hdb();return await new Promise(ok=>{const r=d.transaction('handles').objectStore('handles').get(BK.key);r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null)})}catch(e){return null}}
+async function hset(v){const d=await hdb();return new Promise(ok=>{const tx=d.transaction('handles','readwrite');v?tx.objectStore('handles').put(v,BK.key):tx.objectStore('handles').delete(BK.key);tx.oncomplete=ok})}
+async function appDir(ask){
+  const root=await hget();if(!root)return null;
+  let p=await root.queryPermission({mode:'readwrite'});
+  if(p!=='granted'&&ask)p=await root.requestPermission({mode:'readwrite'});
+  if(p!=='granted')return null;
+  const g=await root.getDirectoryHandle('GlenApps',{create:true});return g.getDirectoryHandle(BK.folder,{create:true});
+}
+const today=()=>new Date().toISOString().slice(0,10);
+let bkStr='';
+const cleanDoc=d=>{const c=Object.assign({},d);delete c._lastQ;return c};
+const backupData=()=>JSON.stringify({app:BK.app,version:VERSION,date:new Date().toISOString(),folders:LS.get('folders',[]),docs:docsCache.map(cleanDoc)});
+let bkTimer=null;
+async function changed(){try{docsCache=await allDocs()}catch(e){}if(view==='home')drawDocs();
+  clearTimeout(bkTimer);bkTimer=setTimeout(()=>{bkStr=backupData();try{window.GlenDrive&&GlenDrive.changed()}catch(e){}autoBackup(false)},4000)}
+async function autoBackup(ask){
+  try{const dir=await appDir(ask);if(!dir)return false;
+    const f=await dir.getFileHandle(`${BK.prefix}-${today()}.json`,{create:true});const w=await f.createWritable();await w.write(bkStr||backupData());await w.close();
+    bkUI();return true}catch(e){console.warn(e);return false}
+}
+async function bkUI(){
+  const root=await hget();
+  $('#bkState').textContent=root?('«'+root.name+'» › GlenApps › GlenScanner'):'δεν έχει οριστεί';
+  $('#bkForget').classList.toggle('hidden',!root);$('#bkPick').textContent=root?'📁 Αλλαγή φακέλου':'📁 Επιλογή φακέλου';
+  if(!('showDirectoryPicker' in window)){$('#bkPick').disabled=true;$('#bkState').textContent='το κινητό δεν υποστηρίζει φάκελο — χρησιμοποίησε το «Αντίγραφο τώρα»'}
+}
+$('#bkPick').onclick=async()=>{
+  try{const h=await showDirectoryPicker({id:BK.key,mode:'readwrite',startIn:'downloads'});await hset(h);bkStr=backupData();await autoBackup(true);toast('Ο φάκελος ορίστηκε· γράφτηκε το πρώτο αντίγραφο');bkUI()}
+  catch(e){if(e.name!=='AbortError')toast('Δεν ορίστηκε φάκελος')}
+};
+$('#bkForget').onclick=async()=>{if(confirm('Αποσύνδεση φακέλου; Τα αρχεία που υπάρχουν ΔΕΝ σβήνονται.')){await hset(null);bkUI();$('#bkList').innerHTML=''}};
+$('#bkNow').onclick=async()=>{
+  bkStr=backupData();if(await autoBackup(true))return toast('Το αντίγραφο γράφτηκε στο GlenApps › GlenScanner');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkStr],{type:'application/json'}));a.download=`${BK.prefix}-${today()}.json`;a.click();toast('Το αντίγραφο κατέβηκε στις Λήψεις');
+};
+$('#bkRestore').onclick=async()=>{
+  const dir=await appDir(true).catch(()=>null);
+  if(!dir)return $('#bkFile').click();
+  const files=[];for await(const [n,h] of dir.entries())if(h.kind==='file'&&n.startsWith(BK.prefix)&&n.endsWith('.json'))files.push([n,h]);
+  files.sort((a,b)=>b[0].localeCompare(a[0]));const top=files.slice(0,10);
+  $('#bkList').innerHTML=(top.length?top.map(([n],i)=>`<div class="it"><div><strong>${esc(n.replace(BK.prefix+'-','').replace('.json',''))}</strong>${i===0?'<span class="muted">νεότερο</span>':''}</div><button class="sec" data-f="${esc(n)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν βρέθηκαν αντίγραφα στον φάκελο.</p>')+'<p><button class="sec" id="bkOther">Άλλο αρχείο…</button></p>';
+  $('#bkOther').onclick=()=>$('#bkFile').click();
+  $('#bkList').querySelectorAll('[data-f]').forEach(b=>b.onclick=async()=>{const h=await dir.getFileHandle(b.dataset.f);restore(await (await h.getFile()).text())});
+};
+$('#bkFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)restore(await f.text())};
+async function restore(txt){
+  try{const o=JSON.parse(txt);if(o.app!==BK.app||!Array.isArray(o.docs))throw 0;
+    if(!confirm(`Επαναφορά ${o.docs.length} σαρώσεων από ${new Date(o.date).toLocaleString('el-GR')}; Οι σαρώσεις που έχεις τώρα δεν σβήνονται.`))return;
+    await store('readwrite',s=>{o.docs.forEach(d=>s.put(d))});if(Array.isArray(o.folders)){const l=new Set([...LS.get('folders',[]),...o.folders]);LS.set('folders',[...l])}
+    toast('Η επαναφορά έγινε');changed();
+  }catch(e){toast('Αυτό δεν είναι αντίγραφο του GlenScanner')}
+}
+bkUI();
+
+// ---------- Google Drive (κοινό antigrafa.js) ----------
+const GD=()=>window.GlenDrive;
+const gdStore={get:()=>LS.get('gdrive',{})||{},set:v=>LS.set('gdrive',v)};
+function gdPaint(){
+  const g=GD();if(!g){$('#gdState').textContent='δεν φορτώθηκε (χρειάζεται σύνδεση)';$('#gdConnect').disabled=true;return}
+  const s=g.state();
+  $('#gdState').textContent=s.on?(s.needTap?'περιμένει ένα πάτημα για να ανεβάσει τις αλλαγές':s.pending?'ανεβαίνει σε λίγο…':s.last?'✓ ασφαλή · τελευταίο '+new Date(s.last).toLocaleString('el-GR'):'συνδέθηκε'):'δεν έχει συνδεθεί';
+  $('#gdConnect').classList.toggle('hidden',!!s.on);['#gdNow','#gdList','#gdOff'].forEach(id=>$(id).classList.toggle('hidden',!s.on));
+}
+try{GD()&&GD().init({app:BK.app,folder:BK.folder,prefix:BK.prefix,payload:()=>bkStr||backupData(),t:(t,e)=>{if(e)for(const k in e)t=t.replace('{'+k+'}',e[k]);return t},toast,store:gdStore,onState:gdPaint})}catch(e){console.warn(e)}
+gdPaint();
+$('#gdConnect').onclick=async()=>{try{docsCache=await allDocs();bkStr=backupData();await GD().connect();toast('Συνδέθηκε με Google Drive')}catch(e){toast('Η σύνδεση δεν ολοκληρώθηκε')}gdPaint()};
+$('#gdNow').onclick=async()=>{try{docsCache=await allDocs();bkStr=backupData();await GD().uploadNow();toast('Ανέβηκε στο Google Drive')}catch(e){toast('Δεν ανέβηκε — έλεγξε τη σύνδεση')}gdPaint()};
+$('#gdOff').onclick=()=>{if(confirm('Αποσύνδεση από το Google Drive; Τα αντίγραφα που υπάρχουν εκεί δεν σβήνονται.')){GD().disconnect();$('#gdFiles').innerHTML='';gdPaint()}};
+$('#gdList').onclick=async()=>{
+  $('#gdFiles').innerHTML='<p class="muted">Φόρτωση…</p>';
+  try{const l=(await GD().list()).slice(0,10);
+    $('#gdFiles').innerHTML=l.length?l.map((f,i)=>`<div class="it"><div><strong>${esc(f.name.replace(BK.prefix+'-','').replace('.json',''))}</strong>${i===0?'<span class="muted">νεότερο</span>':''}</div><button class="sec" data-gd="${esc(f.id)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν υπάρχουν ακόμη αντίγραφα στο Drive.</p>';
+    $('#gdFiles').querySelectorAll('[data-gd]').forEach(b=>b.onclick=async()=>{try{restore(await GD().download(b.dataset.gd))}catch(e){toast('Το αρχείο δεν διαβάστηκε')}});
+  }catch(e){$('#gdFiles').innerHTML='<p class="muted">Δεν φορτώθηκε η λίστα. Έλεγξε τη σύνδεση στο διαδίκτυο.</p>'}
+};
+
+// ---------- Οι εφαρμογές μας (κοινό efarmoges-mas.js) ----------
+const EFM=()=>window.EfarmogesMas;
+try{EFM()&&EFM().init({app:'glenscanner',isPro:()=>false,lang:()=>'el',canShow:()=>docsCache.length>0})}catch(e){}
+function efmShow(){try{EFM()&&view==='home'&&EFM().mount($('#efmSlot'))}catch(e){}}
+$('#appsBox').addEventListener('toggle',()=>{if($('#appsBox').open)try{EFM()?EFM().page($('#efmPage')):$('#efmPage').innerHTML='<p class="muted">Η λίστα δεν φορτώθηκε. Χρειάζεται σύνδεση στο διαδίκτυο.</p>'}catch(e){}});
+
+// ---------- Ρυθμίσεις ----------
+$('#sLang').value=SET.lang;$('#sFilter').value=SET.filter;$('#sAuto').checked=SET.auto;$('#sOcr').checked=SET.ocr;sigState();
+$('#sLang').onchange=e=>{SET.lang=e.target.value;saveSet()};$('#sFilter').onchange=e=>{SET.filter=e.target.value;saveSet()};
+$('#sAuto').onchange=e=>{SET.auto=e.target.checked;saveSet()};$('#sOcr').onchange=e=>{SET.ocr=e.target.checked;saveSet()};
+
+// ---------- Εγκατάσταση στο κινητό ----------
+let instEvt=null;
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const instSnoozed=()=>Date.now()<+(LS.get('inst-later',0)||0);
+function instShow(){if(isStandalone()||instSnoozed())return;$('#instBox').classList.remove('hidden')}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEvt=e;instShow()});
+addEventListener('appinstalled',()=>{$('#instBox').classList.add('hidden');instEvt=null;toast('Το GlenScanner μπήκε στην αρχική οθόνη 🎉')});
+if(isIOS&&!isStandalone()){
+  $('#instTxt').innerHTML='Στο iPhone: πάτα το κουμπί <b>Κοινοποίηση</b> (το τετράγωνο με το βέλος προς τα πάνω) και μετά <b>«Προσθήκη στην οθόνη Αφετηρίας»</b>.';
+  $('#instYes').classList.add('hidden');instShow();
+}
+$('#instYes').onclick=async()=>{
+  if(!instEvt){toast('Από το μενού ⋮ του Χρώμιου πάτα «Εγκατάσταση εφαρμογής»');return}
+  instEvt.prompt();const r=await instEvt.userChoice.catch(()=>({}));instEvt=null;
+  if(r.outcome==='accepted')$('#instBox').classList.add('hidden');
+};
+$('#instNo').onclick=()=>{LS.set('inst-later',Date.now()+7*864e5);$('#instBox').classList.add('hidden')};
+
+// ---------- Αναβάθμιση ----------
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    $('#bUpd').onclick=async()=>{toast('Έλεγχος…');await reg.update();if(!reg.waiting&&!reg.installing)toast('Έχεις την τελευταία έκδοση ('+VERSION+')')};
+    reg.addEventListener('updatefound',()=>{const w=reg.installing;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller){toast('Νέα έκδοση — αναβάθμιση…');w.postMessage('skip')}})});
+  });
+  // ξαναφόρτωση μόνο όταν αντικαθίσταται παλιά έκδοση, και όχι την ώρα που φωτογραφίζεις
+  const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl&&!reloaded&&$('#cam').classList.contains('hidden')){reloaded=true;location.reload()}});
+}else $('#bUpd').onclick=()=>location.reload();
+
+// ---------- Εκκίνηση: κοινοποιημένες φωτογραφίες, συντόμευση «Νέα σάρωση» ----------
+(async()=>{
+  try{docsCache=await allDocs()}catch(e){}
+  // σελίδες που έμειναν μισές (π.χ. έκλεισε η εφαρμογή στη μέση)
+  for(const d of docsCache)for(const p of d.pages)if(!p.img&&p.orig)queue(d,p);
+  drawDocs();efmShow();
+  const q=new URLSearchParams(location.search);
+  if(q.has('shared')){history.replaceState(null,'',location.pathname);
+    try{const c=await caches.open('glenscanner-share');const ks=await c.keys();const files=[];for(const k of ks){const r=await c.match(k);const b=await r.blob();files.push(new File([b],'foto.jpg',{type:b.type||'image/jpeg'}));await c.delete(k)}
+      if(files.length){const d=newDoc('doc');await importFiles(files,d,'doc');openEdit(d)}else toast('Δεν ήρθαν φωτογραφίες')}catch(e){toast('Οι φωτογραφίες δεν διαβάστηκαν')}}
+  else if(q.has('scan')){history.replaceState(null,'',location.pathname);setTimeout(()=>$('#bScan').click(),300)}
+})();
+</script>
+</body>
+</html>
