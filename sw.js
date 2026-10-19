@@ -1,4 +1,4 @@
-const CACHE='glenscanner-1.1';
+const CACHE='glenscanner-1.2';
 const CORE=['./','index.html','manifest.json','icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png','privacy.html','G-glenapps.png','antigrafa.js','efarmoges-mas.js','grammata.ttf'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));
 self.addEventListener('message',e=>{if(e.data==='skip')self.skipWaiting()});
@@ -24,5 +24,6 @@ self.addEventListener('fetch',e=>{
     return;
   }
   // βιβλιοθήκες και λεξικά γλώσσας: αποθήκευση για χρήση χωρίς ίντερνετ
-  e.respondWith(caches.open('glenscanner-lib').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(n=>{if(n.ok||n.type==='opaque')c.put(e.request,n.clone());return n}))));
+  // (με έλεγχο ακεραιότητας οι βιβλιοθήκες ζητούνται «cors»· μια παλιά «αδιαφανής» αποθηκευμένη απάντηση δεν κάνει, ξανακατεβαίνει)
+  e.respondWith(caches.open('glenscanner-lib').then(c=>c.match(e.request).then(r=>(r&&!(r.type==='opaque'&&e.request.mode==='cors'))?r:fetch(e.request).then(n=>{if(n.ok||(n.type==='opaque'&&e.request.mode!=='cors'))c.put(e.request,n.clone());return n}))));
 });

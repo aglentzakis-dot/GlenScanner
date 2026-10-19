@@ -6,6 +6,7 @@
 <title>GlenScanner</title>
 <meta name="description" content="Σαρωτής εγγράφων: κάμερα → καθαρό PDF με αναγνώριση κειμένου. Χωρίς υδατογράφημα, χωρίς λογαριασμό, χωρίς συνδρομή.">
 <meta name="theme-color" content="#FDD117">
+<meta name="app-version" content="1.2">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -48,6 +49,10 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
 .list .it strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1d1d1b;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:60;max-width:90%;text-align:center}
 #toast.on{opacity:1}
+.bksafeh{display:block;margin:12px 0 6px}
+.bkrow{width:100%;justify-content:flex-start;text-align:left;margin:6px 0;gap:10px}
+.bkrow .bkt{flex:1;min-width:0;display:flex;flex-direction:column}.bkrow .bkt small{color:var(--soft);font-size:12.5px;font-weight:400}
+.bkok{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#fff}.bkok.y{background:var(--ok)}.bkok.n{background:var(--bad)}
 
 /* αρχική: φάκελοι και λίστα σαρώσεων */
 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
@@ -211,30 +216,9 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
     <details id="bkBox">
       <summary>💾 Αντίγραφα ασφαλείας</summary>
       <p class="muted">Οι σαρώσεις μένουν μόνο στο κινητό σου. Αν καθαρίσεις τα δεδομένα του περιηγητή ή αλλάξεις κινητό, χάνονται — γι' αυτό κράτα αντίγραφο.</p>
-      <div class="card" style="margin:10px 0;padding:12px">
-        <p style="margin:0 0 6px"><b>☁️ Google Drive</b> — <span id="gdState">δεν έχει συνδεθεί</span></p>
-        <p class="muted" style="margin:0 0 8px">Με το Google Drive οι σαρώσεις σου είναι ασφαλείς ακόμα κι αν χαλάσει ή χαθεί το κινητό. Ένα πάτημα για σύνδεση, μετά ανεβαίνουν μόνες τους μετά από κάθε αλλαγή, στο <b>GlenApps › GlenScanner</b> του δικού σου Drive.</p>
-        <div class="row">
-          <button id="gdConnect">Σύνδεση με Google</button>
-          <button class="sec hidden" id="gdNow">⬆ Ανέβασμα τώρα</button>
-          <button class="sec hidden" id="gdList">↩ Επαναφορά από Drive</button>
-          <button class="sec hidden" id="gdOff">Αποσύνδεση</button>
-        </div>
-        <div class="list" id="gdFiles"></div>
-      </div>
-      <p><b>Φάκελος στο κινητό</b> (δεύτερος τρόπος, αν δεν έχεις Google Drive):<br> <span id="bkState">δεν έχει οριστεί</span></p>
-      <div class="row">
-        <button id="bkPick">📁 Επιλογή φακέλου</button>
-        <button class="sec hidden" id="bkForget">✕ Αποσύνδεση φακέλου</button>
-      </div>
-      <p class="muted">Μέσα στον φάκελο που θα διαλέξεις μπαίνει <b>GlenApps › GlenScanner</b>, όπως σε όλες τις εφαρμογές μας. Μετά από κάθε αλλαγή γράφεται αυτόματα ένα αρχείο της ημέρας. Τα PDF που αποθηκεύεις μπαίνουν στο <b>GlenApps › GlenScanner › Έγγραφα</b>.</p>
-      <div class="row">
-        <button class="sec" id="bkNow">⬇ Αντίγραφο τώρα</button>
-        <button class="sec" id="bkRestore">↩ Επαναφορά</button>
-        <input type="file" id="bkFile" accept=".json,application/json" hidden>
-      </div>
-      <div class="list" id="bkList"></div>
-      <p class="muted">Αν το κινητό δεν υποστηρίζει φάκελο, το «Αντίγραφο τώρα» κατεβάζει το αρχείο στις Λήψεις και η «Επαναφορά» σου ζητά να το διαλέξεις.</p>
+      <b class="bksafeh">🛡️ Πού φυλάγονται τα στοιχεία σου</b>
+      <div id="bkRows"></div>
+      <div class="row" style="margin-top:8px"><button class="sec" id="bkRestore">↩ Επαναφορά</button><input type="file" id="bkFile" accept=".json,application/json" hidden></div>
     </details>
   </div>
 
@@ -383,17 +367,20 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
 </div></div>
 <div id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" integrity="sha256-qOKZGNCYsrBuEBK9rv+0rsBEXF1WVHCQI+C9H0QqgOg=" crossorigin="anonymous" defer></script>
 <script src="antigrafa.js"></script>
 <script src="/efarmoges-mas.js"></script>
 <script>window.EfarmogesMas||document.write('<script src="efarmoges-mas.js"><\/script>')</script>
 <script>
 'use strict';
-const VERSION='1.1';
+const APP_VERSION='1.2';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-$('#ver').textContent='GlenApps · '+VERSION;$('#ver2').textContent=VERSION;
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('#ver').textContent='GlenApps · '+APP_VERSION;$('#ver2').textContent=APP_VERSION;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// εικόνα δεκτή μόνο ως data:image/… σε base64 (χωρίς εισαγωγικά, παρενθέσεις ή κενά που θα έσπαγαν το url('…'))
+const safeImg=s=>typeof s==='string'&&/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(s)?s:'';
+const cssImg=s=>{const v=safeImg(s);return v?`url('${v}')`:'none'};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2800)};
 const LS={get(k,d){try{const v=localStorage.getItem('glenscanner-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('glenscanner-'+k,JSON.stringify(v))}catch(e){}}};
@@ -756,7 +743,7 @@ function drawDocs(){
   const q=$('#q').value.trim().toLocaleLowerCase('el');const norm=s=>String(s||'').toLocaleLowerCase('el').normalize('NFD').replace(/[̀-ͯ]/g,'');const qn=norm(q);
   let L=docsCache.filter(d=>(curFolder==='*'||d.folder===curFolder)&&(!qn||norm(d.name).includes(qn)||d.pages.some(p=>norm(p.text).includes(qn)))).sort((a,b)=>(b.upd||0)-(a.upd||0));
   $('#docCount').textContent=docsCache.length?docsCache.length+(docsCache.length===1?' σάρωση':' σαρώσεις'):'';
-  $('#docs').innerHTML=L.length?L.map(d=>{const p=d.pages[0],th=p&&p.img?`style="background-image:url('${p.img}')"`:'';const hit=qn&&!norm(d.name).includes(qn);
+  $('#docs').innerHTML=L.length?L.map(d=>{const p=d.pages[0],th=p&&safeImg(p.img)?`style="background-image:${cssImg(p.img)}"`:'';const hit=qn&&!norm(d.name).includes(qn);
     return `<div class="d" data-id="${d.id}"><div class="th" ${th}>${th?'':'📄'}</div><div class="nm"><strong>${esc(d.name)}</strong><small>${d.pages.length} σελ. · ${fmtDate(d.upd||d.date)}${d.folder&&curFolder==='*'?' · 📁 '+esc(d.folder):''}${d.pages.some(x=>x.ocr)?'<span class="badge">κείμενο</span>':''}${hit?'<span class="badge">βρέθηκε στο κείμενο</span>':''}</small></div><button class="sec more" data-more="${d.id}" aria-label="Επιλογές">⋮</button></div>`}).join('')
     :`<div class="empty">${docsCache.length?'Δεν βρέθηκε τίποτα.':'Δεν έχεις ακόμη σαρώσεις.<br>Πάτα «📷 Νέα σάρωση» για να ξεκινήσεις.'}</div>`;
 }
@@ -867,7 +854,7 @@ function paintCamUI(){
   $('#cDone').textContent=n?'✓ Τέλος ('+n+')':'Τέλος';
 }
 const camState=t=>{const e=$('#cState');if(e.textContent!==t)e.textContent=t;e.classList.toggle('hidden',!t)};
-function camThumb(){if(!camDoc)return;const p=camDoc.pages[camDoc.pages.length-1];const b=$('#cLast');b.style.backgroundImage=p&&p.img?`url('${p.img}')`:'none';b.textContent=camDoc.pages.length?camDoc.pages.length:'';paintCamUI()}
+function camThumb(){if(!camDoc)return;const p=camDoc.pages[camDoc.pages.length-1];const b=$('#cLast');b.style.backgroundImage=p?cssImg(p.img):'none';b.textContent=camDoc.pages.length?camDoc.pages.length:'';paintCamUI()}
 $('#cModes').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;camMode=b.dataset.m;if(camDoc&&!camDoc.pages.length)camDoc.mode=camMode;paintCamUI()};
 $('#cAuto').onclick=()=>{SET.auto=!SET.auto;saveSet();$('#sAuto').checked=SET.auto;paintCamUI();toast(SET.auto?'Αυτόματη λήψη: ναι — κράτα σταθερά':'Αυτόματη λήψη: όχι — πάτα το κίτρινο κουμπί')};
 $('#cTorch').onclick=async()=>{torch=!torch;try{await camTrack.applyConstraints({advanced:[{torch}]})}catch(e){torch=false}$('#cTorch').classList.toggle('on',torch)};
@@ -974,7 +961,7 @@ async function paintEdit(){
   const d=cur;if(!d)return;$('#eName').textContent=d.name;
   if(!d.pages.length){$('#pvImg').classList.add('hidden');$('#pvWait').classList.remove('hidden');$('#pvWait').textContent='Δεν υπάρχουν σελίδες — πάτα ➕';$('#pgNo').textContent=''}
   ci=Math.max(0,Math.min(ci,d.pages.length-1));const p=d.pages[ci];
-  $('#strip').innerHTML=d.pages.map((x,i)=>`<button class="t${i===ci?' on':''}" data-i="${i}" style="${x.img?`background-image:url('${x.img}')`:''}">${x.img?'':'⏳'}<i>${i+1}</i></button>`).join('')+`<button class="t add" id="addPg" aria-label="Προσθήκη σελίδας">➕</button>`;
+  $('#strip').innerHTML=d.pages.map((x,i)=>`<button class="t${i===ci?' on':''}" data-i="${i}" style="${safeImg(x.img)?`background-image:${cssImg(x.img)}`:''}">${x.img?'':'⏳'}<i>${i+1}</i></button>`).join('')+`<button class="t add" id="addPg" aria-label="Προσθήκη σελίδας">➕</button>`;
   const on=$('#strip .t.on');on&&on.scrollIntoView({inline:'center',block:'nearest'});
   $$('#flt [data-f]').forEach(b=>b.classList.toggle('on',p&&b.dataset.f===p.filter));
   ['#tLeft','#tRight','#tDel','#tCrop','#tRot','#tSig'].forEach(s=>$(s).disabled=!p);$('#tLeft').disabled=!p||ci===0;$('#tRight').disabled=!p||ci>=d.pages.length-1;
@@ -983,7 +970,7 @@ async function paintEdit(){
   if(!p.img){$('#pvImg').classList.add('hidden');$('#pvWait').classList.remove('hidden');$('#pvWait').textContent=p.err?'⚠️ Η σελίδα δεν επεξεργάστηκε':'⏳ Επεξεργασία σελίδας…';return}
   $('#pvWait').classList.add('hidden');$('#pvImg').classList.remove('hidden');
   const t=++pvToken;
-  if((p.stamps&&p.stamps.length)||d.mark){const c=await renderPage(p,d,1600);if(t!==pvToken)return;$('#pvImg').src=jpg(c,.85);c.width=0}else $('#pvImg').src=p.img;
+  if((p.stamps&&p.stamps.length)||d.mark){const c=await renderPage(p,d,1600).catch(()=>null);if(!c){$('#pvImg').src=safeImg(p.img);return}if(t!==pvToken)return;$('#pvImg').src=jpg(c,.85);c.width=0}else $('#pvImg').src=safeImg(p.img);
 }
 $('#strip').onclick=e=>{if(e.target.closest('#addPg')){addPageMenu();return}const b=e.target.closest('[data-i]');if(b){ci=+b.dataset.i;paintEdit()}};
 // σύρσιμο αριστερά/δεξιά για αλλαγή σελίδας
@@ -1101,14 +1088,23 @@ function markDlg(){
 }
 
 // ---------- Αναγνώριση κειμένου ----------
-let worker=null,workerLang='';
+let worker=null,workerLang='',workerUrl=null;
+// ο εργάτης της αναγνώρισης κατεβαίνει, ελέγχεται το αποτύπωμά του (SHA-256) και μόνο τότε τρέχει
+const WORKER_SRC='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',WORKER_SHA='rKEiljn8mQfYb5boJZVaK3xXFtF/O8Os1x+cerZhgfw=';
+async function verifiedWorker(){
+  if(workerUrl)return workerUrl;
+  const buf=await (await fetch(WORKER_SRC,{mode:'cors',credentials:'omit'})).arrayBuffer();
+  const h=btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',buf))));
+  if(h!==WORKER_SHA)throw new Error('integrity');
+  return workerUrl=URL.createObjectURL(new Blob([buf],{type:'application/javascript'}));
+}
 async function getWorker(){
   for(let i=0;i<40&&!window.Tesseract;i++)await sleep(150);
   if(!window.Tesseract)throw new Error('nolib');
   if(worker&&workerLang===SET.lang)return worker;
   if(worker){await worker.terminate();worker=null}
   busy(null,'Φόρτωση λεξικών γλώσσας (μόνο την πρώτη φορά αργεί)…',0);
-  worker=await Tesseract.createWorker(SET.lang,1,{logger:m=>{if(m.status&&m.status.includes('loading'))busy(null,'Φόρτωση λεξικών… '+Math.round((m.progress||0)*100)+'%',m.progress||0)}});
+  worker=await Tesseract.createWorker(SET.lang,1,{workerPath:await verifiedWorker(),workerBlobURL:false,logger:m=>{if(m.status&&m.status.includes('loading'))busy(null,'Φόρτωση λεξικών… '+Math.round((m.progress||0)*100)+'%',m.progress||0)}});
   workerLang=SET.lang;return worker;
 }
 function fixText(t){return t.replace(/\r/g,'').replace(/(\p{L})-\n(\p{Ll})/gu,'$1$2').replace(/([^\n.!;:·»)])\n(?!\n)(?=\S)/gu,'$1 ').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim()}
@@ -1201,6 +1197,8 @@ async function saveFiles(files){
 }
 let fontB64=null;
 async function fontData(){if(fontB64)return fontB64;const b=new Uint8Array(await (await fetch('grammata.ttf')).arrayBuffer());let s='';for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));return fontB64=btoa(s)}
+// κωδικός ιδιοκτήτη: τυχαίος, 32 χαρακτήρες, δεν φυλάγεται πουθενά
+const randPw=()=>{const b=crypto.getRandomValues(new Uint8Array(24));return btoa(String.fromCharCode(...b)).replace(/[^A-Za-z0-9]/g,'x')};
 async function buildPdf(d,o,noEnc){
   if(!window.jspdf)throw new Error('nolib');
   const{jsPDF}=window.jspdf,Q=QUAL[o.q],withText=o.text&&d.pages.some(p=>p.words&&p.words.length);
@@ -1216,7 +1214,7 @@ async function buildPdf(d,o,noEnc){
         if(o.size==='auto'){pw=ar>=1?210:297;ph=pw*ar;places.push([p,0,0,pw,ph])}
         else{let[A,B]=o.size==='letter'?[215.9,279.4]:[210,297];if(ar<1)[A,B]=[B,A];pw=A;ph=B;const k=Math.min(pw/p.w,ph/p.h),iw=p.w*k,ih=p.h*k;places.push([p,(pw-iw)/2,(ph-ih)/2,iw,ih])}}
       const ori=pw>ph?'l':'p';
-      if(!pdf){const opt={unit:'mm',format:[pw,ph],orientation:ori,compress:true};if(o.pw&&!noEnc)opt.encryption={userPassword:o.pw,ownerPassword:o.pw+'·glen',userPermissions:['print','copy']};pdf=new jsPDF(opt);
+      if(!pdf){const opt={unit:'mm',format:[pw,ph],orientation:ori,compress:true};if(o.pw&&!noEnc)opt.encryption={userPassword:o.pw,ownerPassword:randPw(),userPermissions:['print','copy']};pdf=new jsPDF(opt);
         pdf.setProperties({title:d.name,creator:'GlenScanner · GlenApps',producer:'GlenScanner'});
         if(font){pdf.addFileToVFS('grammata.ttf',font);pdf.addFont('grammata.ttf','grammata','normal')}}
       else pdf.addPage([pw,ph],ori);
@@ -1236,8 +1234,12 @@ async function buildPdf(d,o,noEnc){
   }finally{busy(false)}
 }
 
-// ---------- Αντίγραφα ασφαλείας (κοινή λογική GlenApps) ----------
-// GlenApps › GlenScanner στον φάκελο του κινητού· δικό της κλειδί «glenscanner-root»
+// ---------- Αντίγραφα ασφαλείας (κοινή λογική GlenApps · «Ασφάλεια αντιγράφων») ----------
+// GlenApps › GlenScanner στον φάκελο του κινητού και στο Google Drive· δικό της κλειδί «glenscanner-root» (κανόνας 9)
+// Κανόνες: 1) ποτέ αντίγραφο με 0 σαρώσεις · 2) αν το νέο έχει λιγότερες σαρώσεις, το παλιό φυλάγεται πρώτα ως «-prin-»
+// 3) σύνδεση Drive σε άδεια εφαρμογή → επαναφορά, όχι ανέβασμα · 4) πριν από επαναφορά, αντίγραφο των τωρινών
+// 5) η επαναφορά δείχνει πόσα έχει το αντίγραφο και πόσα έχεις τώρα · 6) ένα ανέβασμα τη φορά (κοινό antigrafa.js)
+// 7) φάκελος σε Ανδροειδές: σημάδι πριν τον επιλογέα · 8) σελίδα «Πού φυλάγονται τα στοιχεία σου»
 const BK={app:'glenscanner',folder:'GlenScanner',prefix:'glenscanner-antigrafo',key:'glenscanner-root'};
 const hdb=()=>new Promise((ok,no)=>{const r=indexedDB.open('shared-backups',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
 async function hget(){try{const d=await hdb();return await new Promise(ok=>{const r=d.transaction('handles').objectStore('handles').get(BK.key);r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null)})}catch(e){return null}}
@@ -1249,73 +1251,182 @@ async function appDir(ask){
   if(p!=='granted')return null;
   const g=await root.getDirectoryHandle('GlenApps',{create:true});return g.getDirectoryHandle(BK.folder,{create:true});
 }
-const today=()=>new Date().toISOString().slice(0,10);
+const pad2=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())};
+const hms=()=>{const d=new Date();return pad2(d.getHours())+pad2(d.getMinutes())+pad2(d.getSeconds())};
 let bkStr='';
 const cleanDoc=d=>{const c=Object.assign({},d);delete c._lastQ;return c};
-const backupData=()=>JSON.stringify({app:BK.app,version:VERSION,date:new Date().toISOString(),folders:LS.get('folders',[]),docs:docsCache.map(cleanDoc)});
+const backupData=()=>JSON.stringify({app:BK.app,version:APP_VERSION,date:new Date().toISOString(),folders:LS.get('folders',[]),docs:docsCache.map(cleanDoc)});
+// πόσες σαρώσεις έχει ένα αντίγραφο (null = δεν διαβάζεται)
+const bkCount=t=>{try{const o=JSON.parse(t);return o&&Array.isArray(o.docs)?o.docs.length:null}catch(e){return null}};
+const bkPages=t=>{try{return JSON.parse(t).docs.reduce((a,d)=>a+((d&&Array.isArray(d.pages))?d.pages.length:0),0)}catch(e){return 0}};
 let bkTimer=null;
 async function changed(){try{docsCache=await allDocs()}catch(e){}if(view==='home')drawDocs();
   clearTimeout(bkTimer);bkTimer=setTimeout(()=>{bkStr=backupData();try{window.GlenDrive&&GlenDrive.changed()}catch(e){}autoBackup(false)},4000)}
+// φύλαξη του παλιού αρχείου πριν το αντικαταστήσει ένα με λιγότερες σαρώσεις (κανόνας 2)
+async function keepPrin(dir,oldText){
+  const n=`${BK.prefix}-${today()}-prin-${hms()}.json`;
+  const h=await dir.getFileHandle(n,{create:true});const w=await h.createWritable();await w.write(oldText);await w.close();
+  const chk=await (await h.getFile()).text();if(chk.length!==oldText.length)throw new Error('prin');
+  prunePrin(dir).catch(()=>{});
+}
+// κρατά τα 10 πιο πρόσφατα «prin» και το πιο γεμάτο κάθε μέρας για 30 μέρες (το μέγεθος δείχνει πόσο γεμάτο είναι)
+async function prunePrin(dir){
+  const L=[];for await(const[n,h]of dir.entries())if(h.kind==='file'&&n.startsWith(BK.prefix+'-')&&n.includes('-prin-'))L.push({n,size:(await h.getFile()).size});
+  L.sort((a,b)=>b.n.localeCompare(a.n));const keep=new Set(L.slice(0,10).map(x=>x.n)),best=new Map,lim=Date.now()-30*864e5;
+  for(const x of L){const m=/(\d{4}-\d{2}-\d{2})-prin/.exec(x.n);if(!m||new Date(m[1]).getTime()<lim)continue;const b=best.get(m[1]);if(!b||x.size>b.size)best.set(m[1],x)}
+  best.forEach(x=>keep.add(x.n));
+  for(const x of L)if(!keep.has(x.n))try{await dir.removeEntry(x.n)}catch(e){}
+}
+// γράψιμο του αρχείου της ημέρας στον φάκελο του κινητού, με τους κανόνες 1 και 2
+async function writeDay(dir,txt){
+  const n=bkCount(txt);if(!n)return 'empty';
+  const name=`${BK.prefix}-${today()}.json`;let old=null;
+  try{old=await (await (await dir.getFileHandle(name)).getFile()).text()}catch(e){}
+  if(old){const o=bkCount(old);if(o!=null&&n<o)await keepPrin(dir,old)}// αν δεν φυλαχτεί, πετά λάθος και δεν γράφεται τίποτα
+  const f=await dir.getFileHandle(name,{create:true});const w=await f.createWritable();await w.write(txt);await w.close();
+  return true;
+}
 async function autoBackup(ask){
-  try{const dir=await appDir(ask);if(!dir)return false;
-    const f=await dir.getFileHandle(`${BK.prefix}-${today()}.json`,{create:true});const w=await f.createWritable();await w.write(bkStr||backupData());await w.close();
-    bkUI();return true}catch(e){console.warn(e);return false}
+  try{if(!docsCache.length)return false;const dir=await appDir(ask);if(!dir)return false;
+    const r=await writeDay(dir,bkStr||backupData());LS.set('bk-last',Date.now());bkUI();return r===true}catch(e){console.warn(e);bkLog('φάκελος: '+(e&&e.message||e));return false}
 }
+const bkLog=m=>{const l=LS.get('bk-err',[]);l.unshift({t:Date.now(),m:String(m).slice(0,200)});LS.set('bk-err',l.slice(0,20))};
+
+// ---- επιλογή φακέλου: σημάδι πριν ανοίξει ο επιλογέας (κανόνας 7) ----
+const FS_MARK='fs-picking';
+const picking=()=>{const t=+LS.get(FS_MARK,0);return t&&Date.now()-t<10*6e4};
+async function pickFolder(){
+  if(!('showDirectoryPicker' in window))return toast('Το κινητό δεν υποστηρίζει φάκελο — χρησιμοποίησε το Google Drive ή «Αντίγραφο τώρα»');
+  LS.set(FS_MARK,Date.now());
+  try{const h=await showDirectoryPicker({id:BK.key,mode:'readwrite',startIn:'downloads'});await hset(h);LS.set(FS_MARK,0);
+    bkStr=backupData();const ok=await autoBackup(true);toast(ok?'Ο φάκελος ορίστηκε· γράφτηκε το πρώτο αντίγραφο':'Ο φάκελος ορίστηκε');bkUI();return true}
+  catch(e){LS.set(FS_MARK,0);if(e.name!=='AbortError'){bkLog('επιλογέας: '+(e.message||e.name));toast('Δεν ορίστηκε φάκελος')}return false}
+}
+// αν η εφαρμογή ξεκίνησε ενώ ήταν ανοιχτός ο επιλογέας, ο φάκελος δεν κρατήθηκε (συμβαίνει σε Ανδροειδές)
+function fsLostCheck(){
+  if(location.hash==='#fsdiale'){history.replaceState(null,'',location.pathname);
+    dlgOpen('📁 Φάκελος αντιγράφων','<p>Πάτα «Διάλεξε φάκελο» και επίλεξε π.χ. τις <b>Λήψεις</b>. Μέσα θα μπει <b>GlenApps › GlenScanner</b>.</p>',()=>{pickFolder();},{ok:'📁 Διάλεξε φάκελο'});return}
+  if(!picking())return;LS.set(FS_MARK,0);bkLog('ο φάκελος δεν κρατήθηκε (η εφαρμογή ξεκίνησε ξανά)');
+  dlgOpen('⚠️ Ο φάκελος δεν κρατήθηκε',`<p>Το κινητό έκλεισε την εφαρμογή όσο διάλεγες φάκελο, οπότε η επιλογή χάθηκε.</p><div class="vlist"><button class="sec" data-a="again">🔄 Δοκίμασε ξανά</button><button class="sec" data-a="chrome">🌐 Διάλεξε τον φάκελο από τον Chrome</button></div><p class="muted">Αν δεν τα καταφέρεις, το Google Drive δεν χρειάζεται φάκελο και ανεβάζει μόνο του μετά από κάθε αλλαγή.</p>`,null,{info:true,noOk:true,no:'Κλείσιμο'});
+  $('#dlgB').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;dlgClose();if(b.dataset.a==='again')pickFolder();else window.open(location.origin+location.pathname+'#fsdiale','_blank','noopener')};
+}
+
+// ---- σελίδα «Πού φυλάγονται τα στοιχεία σου» (κανόνας 8) ----
 async function bkUI(){
-  const root=await hget();
-  $('#bkState').textContent=root?('«'+root.name+'» › GlenApps › GlenScanner'):'δεν έχει οριστεί';
-  $('#bkForget').classList.toggle('hidden',!root);$('#bkPick').textContent=root?'📁 Αλλαγή φακέλου':'📁 Επιλογή φακέλου';
-  if(!('showDirectoryPicker' in window)){$('#bkPick').disabled=true;$('#bkState').textContent='το κινητό δεν υποστηρίζει φάκελο — χρησιμοποίησε το «Αντίγραφο τώρα»'}
+  const root=await hget(),g=GD()&&GD().state();
+  const row=(id,ok,ic,title,sub)=>`<button class="sec bkrow" id="${id}"><span class="bkok ${ok?'y':'n'}">${ok?'✓':'✗'}</span><span class="bkt"><b>${ic} ${title}</b><small>${esc(sub)}</small></span><span aria-hidden="true">›</span></button>`;
+  const gsub=!GD()?'δεν φορτώθηκε (χρειάζεται σύνδεση)':g.on?(g.needTap?'περιμένει ένα πάτημα για να ανεβάσει τις αλλαγές':g.pending?'ανεβαίνει σε λίγο…':g.last?'ασφαλή · τελευταίο '+new Date(g.last).toLocaleString('el-GR'):'συνδέθηκε'):'δεν έχει συνδεθεί — με το Drive τα στοιχεία σου σώζονται ακόμα κι αν χαθεί το κινητό';
+  const fsub=!('showDirectoryPicker' in window)?'το κινητό δεν υποστηρίζει φάκελο':root?('«'+root.name+'» › GlenApps › GlenScanner'):'δεν έχει οριστεί';
+  $('#bkRows').innerHTML=row('bkRowD',!!(g&&g.on&&!g.err),'☁️','Google Drive',gsub)+row('bkRowF',!!root,'📁','Φάκελος στο κινητό',fsub);
+  $('#bkRowD').onclick=driveDlg;$('#bkRowF').onclick=folderDlg;
 }
-$('#bkPick').onclick=async()=>{
-  try{const h=await showDirectoryPicker({id:BK.key,mode:'readwrite',startIn:'downloads'});await hset(h);bkStr=backupData();await autoBackup(true);toast('Ο φάκελος ορίστηκε· γράφτηκε το πρώτο αντίγραφο');bkUI()}
-  catch(e){if(e.name!=='AbortError')toast('Δεν ορίστηκε φάκελος')}
-};
-$('#bkForget').onclick=async()=>{if(confirm('Αποσύνδεση φακέλου; Τα αρχεία που υπάρχουν ΔΕΝ σβήνονται.')){await hset(null);bkUI();$('#bkList').innerHTML=''}};
-$('#bkNow').onclick=async()=>{
+function driveDlg(){
+  const g=GD();if(!g)return toast('Το Google Drive δεν φορτώθηκε — χρειάζεται σύνδεση στο διαδίκτυο');const s=g.state();
+  dlgOpen('☁️ Google Drive',`<p>${s.on?'Συνδεδεμένο'+(s.email?' ως <b>'+esc(s.email)+'</b>':'')+'. Οι σαρώσεις ανεβαίνουν μόνες τους μετά από κάθε αλλαγή, στο <b>GlenApps › GlenScanner</b> του δικού σου Drive.':'Με το Google Drive οι σαρώσεις σου είναι ασφαλείς ακόμα κι αν χαλάσει ή χαθεί το κινητό. Ένα πάτημα για σύνδεση· μετά ανεβαίνουν μόνες τους μετά από κάθε αλλαγή.'}</p>
+    <div class="vlist">${s.on?'<button class="sec" data-a="now">⬆ Ανέβασμα τώρα</button><button class="sec" data-a="off">Αποσύνδεση</button>':'<button data-a="on">Σύνδεση με Google</button>'}</div>`,null,{info:true,noOk:true,no:'Κλείσιμο'});
+  $('#dlgB').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;dlgClose();
+    if(a==='on')gdConnect();
+    else if(a==='now'){try{docsCache=await allDocs();bkStr=backupData();const r=await g.uploadNow();toast(r==='empty'?'Δεν ανέβηκε τίποτα — δεν υπάρχουν σαρώσεις':'Ανέβηκε στο Google Drive')}catch(er){toast('Δεν ανέβηκε — έλεγξε τη σύνδεση')}bkUI()}
+    else if(a==='off'&&confirm('Αποσύνδεση από το Google Drive; Τα αντίγραφα που υπάρχουν εκεί δεν σβήνονται.')){g.disconnect();bkUI()}};
+}
+async function gdConnect(){
+  try{docsCache=await allDocs();bkStr=backupData();const r=await GD().connect();
+    if(r==='restore'){toast('Βρέθηκαν αντίγραφα στο Drive — διάλεξε ποιο θα επαναφέρεις');restoreDlg()}
+    else if(r==='empty')toast('Συνδέθηκε· το πρώτο αντίγραφο θα ανέβει μόλις κάνεις σάρωση');
+    else toast('Συνδέθηκε με Google Drive');
+  }catch(e){toast('Η σύνδεση δεν ολοκληρώθηκε')}bkUI();
+}
+async function folderDlg(){
+  const root=await hget(),can='showDirectoryPicker' in window;
+  dlgOpen('📁 Φάκελος στο κινητό',`<p>${root?'Τα αντίγραφα γράφονται στο <b>«'+esc(root.name)+'» › GlenApps › GlenScanner</b>, ένα αρχείο κάθε μέρα, μόνα τους μετά από κάθε αλλαγή.':'Διάλεξε έναν φάκελο (π.χ. τις Λήψεις). Μέσα του μπαίνει <b>GlenApps › GlenScanner</b>, όπως σε όλες τις εφαρμογές μας.'} Τα PDF που αποθηκεύεις μπαίνουν στο <b>GlenScanner › Έγγραφα</b>.</p>
+    <div class="vlist">${can?`<button class="sec" data-a="pick">📁 ${root?'Αλλαγή φακέλου':'Επιλογή φακέλου'}</button>`:''}<button class="sec" data-a="now">⬇ Αντίγραφο τώρα</button>${root?'<button class="sec" data-a="forget">✕ Αποσύνδεση φακέλου</button>':''}</div>
+    ${can?'':'<p class="muted">Το κινητό δεν υποστηρίζει φάκελο: το «Αντίγραφο τώρα» κατεβάζει το αρχείο στις Λήψεις.</p>'}`,null,{info:true,noOk:true,no:'Κλείσιμο'});
+  $('#dlgB').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;dlgClose();
+    if(a==='pick')pickFolder();
+    else if(a==='now')bkNow();
+    else if(a==='forget'&&confirm('Αποσύνδεση φακέλου; Τα αρχεία που υπάρχουν ΔΕΝ σβήνονται.')){await hset(null);bkUI()}};
+}
+async function bkNow(){
+  docsCache=await allDocs();if(!docsCache.length)return toast('Δεν υπάρχουν σαρώσεις για αντίγραφο');
   bkStr=backupData();if(await autoBackup(true))return toast('Το αντίγραφο γράφτηκε στο GlenApps › GlenScanner');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkStr],{type:'application/json'}));a.download=`${BK.prefix}-${today()}.json`;a.click();toast('Το αντίγραφο κατέβηκε στις Λήψεις');
-};
-$('#bkRestore').onclick=async()=>{
-  const dir=await appDir(true).catch(()=>null);
-  if(!dir)return $('#bkFile').click();
-  const files=[];for await(const [n,h] of dir.entries())if(h.kind==='file'&&n.startsWith(BK.prefix)&&n.endsWith('.json'))files.push([n,h]);
-  files.sort((a,b)=>b[0].localeCompare(a[0]));const top=files.slice(0,10);
-  $('#bkList').innerHTML=(top.length?top.map(([n],i)=>`<div class="it"><div><strong>${esc(n.replace(BK.prefix+'-','').replace('.json',''))}</strong>${i===0?'<span class="muted">νεότερο</span>':''}</div><button class="sec" data-f="${esc(n)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν βρέθηκαν αντίγραφα στον φάκελο.</p>')+'<p><button class="sec" id="bkOther">Άλλο αρχείο…</button></p>';
-  $('#bkOther').onclick=()=>$('#bkFile').click();
-  $('#bkList').querySelectorAll('[data-f]').forEach(b=>b.onclick=async()=>{const h=await dir.getFileHandle(b.dataset.f);restore(await (await h.getFile()).text())});
-};
-$('#bkFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)restore(await f.text())};
-async function restore(txt){
-  try{const o=JSON.parse(txt);if(o.app!==BK.app||!Array.isArray(o.docs))throw 0;
-    if(!confirm(`Επαναφορά ${o.docs.length} σαρώσεων από ${new Date(o.date).toLocaleString('el-GR')}; Οι σαρώσεις που έχεις τώρα δεν σβήνονται.`))return;
-    await store('readwrite',s=>{o.docs.forEach(d=>s.put(d))});if(Array.isArray(o.folders)){const l=new Set([...LS.get('folders',[]),...o.folders]);LS.set('folders',[...l])}
-    toast('Η επαναφορά έγινε');changed();
-  }catch(e){toast('Αυτό δεν είναι αντίγραφο του GlenScanner')}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkStr],{type:'application/json'}));a.download=`${BK.prefix}-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Το αντίγραφο κατέβηκε στις Λήψεις');
 }
-bkUI();
+
+// ---- επαναφορά: μία οθόνη με όλα τα αντίγραφα (κανόνες 4 και 5) ----
+const bkLabel=n=>{const m=/(\d{4})-(\d{2})-(\d{2})(?:-prin-(\d{2})(\d{2})\d{2})?/.exec(n);return m?`${m[3]}/${m[2]}/${m[1]}${m[4]?' · πριν από αλλαγή '+m[4]+':'+m[5]:''}`:n};
+async function restoreDlg(){
+  dlgOpen('↩ Επαναφορά',`<p class="muted">Τώρα έχεις <b>${docsCache.length}</b> σαρώσεις. Πριν από κάθε επαναφορά κρατιέται αντίγραφο των τωρινών.</p><div id="rsList"><p class="muted">Φόρτωση…</p></div><p><button class="sec" id="rsOther">📄 Άλλο αρχείο…</button></p>`,null,{info:true,noOk:true,no:'Κλείσιμο'});
+  $('#rsOther').onclick=()=>{dlgClose();$('#bkFile').click()};
+  let html='';
+  try{const dir=await appDir(false);if(dir){const L=[];for await(const[n,h]of dir.entries())if(h.kind==='file'&&n.startsWith(BK.prefix+'-')&&n.endsWith('.json'))L.push([n,(await h.getFile()).size]);
+      L.sort((a,b)=>b[0].localeCompare(a[0]));html+='<b>📁 Φάκελος κινητού</b>'+(L.length?L.slice(0,12).map(([n,sz],i)=>`<div class="it"><div><strong>${esc(bkLabel(n))}</strong><span class="muted">${kb(sz)}${i===0?' · νεότερο':''}</span></div><button class="sec" data-src="f" data-f="${esc(n)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν βρέθηκαν αντίγραφα.</p>')}}catch(e){}
+  const g=GD();
+  if(g&&g.state().on){try{const L=(await g.list()).slice(0,12);
+      html+='<b style="display:block;margin-top:10px">☁️ Google Drive</b>'+(L.length?L.map((f,i)=>`<div class="it"><div><strong>${esc(bkLabel(f.name))}</strong><span class="muted">${f.size?kb(+f.size):''}${i===0?' · νεότερο':''}</span><button type="button" class="sec" style="min-height:34px;padding:4px 8px;margin-top:4px;font-size:13px" data-rev="${esc(f.id)}">🕘 Παλιότερες εκδοχές του ίδιου αρχείου</button><div data-revl="${esc(f.id)}"></div></div><button class="sec" data-src="d" data-f="${esc(f.id)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν υπάρχουν ακόμη αντίγραφα στο Drive.</p>')}
+    catch(e){html+='<p class="muted">Η λίστα του Drive δεν φορτώθηκε. Έλεγξε τη σύνδεση.</p>'}}
+  const box=$('#rsList');if(!box)return;box.innerHTML=html||'<p class="muted">Δεν υπάρχει συνδεδεμένος φάκελος ή Google Drive. Διάλεξε «Άλλο αρχείο…».</p>';
+  box.onclick=async e=>{
+    const rv=e.target.closest('[data-rev]');
+    if(rv){const id=rv.dataset.rev,l=box.querySelector(`[data-revl="${CSS.escape(id)}"]`);l.innerHTML='<p class="muted">Φόρτωση…</p>';
+      try{const R=(await g.revisions(id)).slice(0,10);l.innerHTML=R.length?R.map(r=>`<div class="row" style="margin:4px 0"><span class="muted" style="flex:1">${new Date(r.modifiedTime).toLocaleString('el-GR')}${r.size?' · '+kb(+r.size):''}</span><button class="sec" data-src="r" data-f="${esc(id)}" data-r="${esc(r.id)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν υπάρχουν παλιότερες εκδοχές.</p>'}catch(er){l.innerHTML='<p class="muted">Δεν φορτώθηκαν.</p>'}return}
+    const b=e.target.closest('[data-src]');if(!b)return;
+    try{let t;if(b.dataset.src==='f'){const dir=await appDir(true);t=await (await (await dir.getFileHandle(b.dataset.f)).getFile()).text()}
+      else if(b.dataset.src==='d')t=await g.download(b.dataset.f);else t=await g.downloadRev(b.dataset.f,b.dataset.r);
+      dlgClose();restore(t)}catch(er){toast('Το αρχείο δεν διαβάστηκε')}};
+}
+$('#bkRestore').onclick=()=>restoreDlg();
+$('#bkFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)restore(await f.text())};
+// αντίγραφο των τωρινών πριν από επαναφορά (κανόνας 4)
+async function backupBeforeRestore(){
+  docsCache=await allDocs();if(!docsCache.length)return true;bkStr=backupData();let ok=false;
+  try{const dir=await appDir(true);if(dir){const n=`${BK.prefix}-${today()}-prin-${hms()}.json`;const h=await dir.getFileHandle(n,{create:true});const w=await h.createWritable();await w.write(bkStr);await w.close();ok=true}}catch(e){bkLog('πριν την επαναφορά: '+(e.message||e))}
+  try{const g=GD();if(g&&g.state().on){const r=await g.uploadNow();if(r!=='empty')ok=true}}catch(e){}
+  return ok||confirm('Δεν μπόρεσε να γίνει αντίγραφο των τωρινών σαρώσεων (δεν υπάρχει φάκελος ή Google Drive). Να γίνει η επαναφορά έτσι κι αλλιώς;');
+}
+// καθάρισμα όσων έρχονται από αρχείο: δεκτά μόνο σωστά στοιχεία, εικόνες μόνο data:image/
+const num=(v,d)=>{v=+v;return isFinite(v)?v:d};
+const str=(v,max)=>typeof v==='string'?v.slice(0,max||500):'';
+function cleanPage(p){
+  if(!p||typeof p!=='object')return null;
+  const q=Array.isArray(p.quad)&&p.quad.length===4&&p.quad.every(a=>Array.isArray(a)&&a.length===2&&a.every(x=>isFinite(+x)))?p.quad.map(a=>[+a[0],+a[1]]):FULL.map(a=>a.slice());
+  return{id:num(p.id,uid()),text:str(p.text,200000),conf:num(p.conf,0),ocr:!!p.ocr,
+    words:Array.isArray(p.words)?p.words.filter(w=>Array.isArray(w)&&w.length===5).map(w=>[str(w[0],200),num(w[1],0),num(w[2],0),num(w[3],0),num(w[4],0)]):undefined,
+    orig:safeImg(p.orig),quad:q,rot:[0,90,180,270].includes(+p.rot)?+p.rot:0,half:p.half==='L'||p.half==='R'?p.half:undefined,card:!!p.card,
+    filter:FILTERS[p.filter]?p.filter:'auto',img:safeImg(p.img)||null,w:num(p.w,0),h:num(p.h,0),
+    stamps:Array.isArray(p.stamps)?p.stamps.filter(s=>s&&safeImg(s.src)).map(s=>({src:s.src,x:num(s.x,0),y:num(s.y,0),w:num(s.w,.3)})):[]};
+}
+function cleanDocIn(d){
+  if(!d||typeof d!=='object'||!Array.isArray(d.pages))return null;
+  const pages=d.pages.map(cleanPage).filter(p=>p&&(p.img||p.orig));if(!pages.length)return null;
+  return{id:num(d.id,uid()),name:str(d.name,200)||'Σάρωση',autoName:!!d.autoName,date:str(d.date,40)||new Date().toISOString(),upd:num(d.upd,Date.now()),
+    folder:str(d.folder,80),src:'glenscanner',mode:['doc','card','book','board'].includes(d.mode)?d.mode:'doc',mark:str(d.mark,120),pages};
+}
+async function restore(txt){
+  let o;try{o=JSON.parse(txt);if(o.app!==BK.app||!Array.isArray(o.docs))throw 0}catch(e){
+    if(/"kleidomeno"\s*:\s*1/.test(String(txt).slice(0,400)))return toast('Αυτό το αντίγραφο είναι κλειδωμένο με κωδικό — η εφαρμογή δεν υποστηρίζει ακόμα κωδικό αντιγράφων');
+    return toast('Αυτό δεν είναι αντίγραφο του GlenScanner')}
+  const docs=o.docs.map(cleanDocIn).filter(Boolean),pages=docs.reduce((a,d)=>a+d.pages.length,0),skipped=o.docs.length-docs.length;
+  const when=o.date?new Date(o.date).toLocaleString('el-GR'):'άγνωστη ημερομηνία';
+  if(!docs.length)return dlgOpen('⚠️ Άδειο αντίγραφο',`<p>Το αντίγραφο από ${esc(when)} <b>δεν έχει σαρώσεις</b>. Δεν άλλαξε τίποτα — τώρα έχεις <b>${docsCache.length}</b> σαρώσεις.</p>`,null,{info:true});
+  const same=docs.filter(d=>docsCache.some(x=>x.id===d.id)).length;
+  dlgOpen('↩ Επαναφορά αντιγράφου',`<p>Αντίγραφο από <b>${esc(when)}</b></p>
+    <p>Στο αντίγραφο: <b>${docs.length}</b> σαρώσεις (${pages} σελίδες)<br>Τώρα έχεις: <b>${docsCache.length}</b> σαρώσεις</p>
+    ${same?`<p class="muted">${same} από αυτές υπάρχουν ήδη και θα πάρουν τη μορφή του αντιγράφου. Οι υπόλοιπες τωρινές σαρώσεις δεν σβήνονται.</p>`:'<p class="muted">Οι τωρινές σαρώσεις δεν σβήνονται· προστίθενται όσες λείπουν.</p>'}
+    ${skipped?`<p class="muted">⚠️ ${skipped} εγγραφές του αρχείου δεν ήταν σωστές και παραλείπονται.</p>`:''}
+    <p class="muted">Πρώτα κρατιέται αντίγραφο των τωρινών.</p>`,async()=>{
+      if(!(await backupBeforeRestore()))return;
+      await store('readwrite',s=>{docs.forEach(d=>s.put(d))});
+      if(Array.isArray(o.folders)){const l=new Set([...LS.get('folders',[]),...o.folders.filter(f=>typeof f==='string').map(f=>f.slice(0,80))]);LS.set('folders',[...l])}
+      toast('Η επαναφορά έγινε');changed();
+    },{ok:'Επαναφορά'});
+}
 
 // ---------- Google Drive (κοινό antigrafa.js) ----------
 const GD=()=>window.GlenDrive;
 const gdStore={get:()=>LS.get('gdrive',{})||{},set:v=>LS.set('gdrive',v)};
-function gdPaint(){
-  const g=GD();if(!g){$('#gdState').textContent='δεν φορτώθηκε (χρειάζεται σύνδεση)';$('#gdConnect').disabled=true;return}
-  const s=g.state();
-  $('#gdState').textContent=s.on?(s.needTap?'περιμένει ένα πάτημα για να ανεβάσει τις αλλαγές':s.pending?'ανεβαίνει σε λίγο…':s.last?'✓ ασφαλή · τελευταίο '+new Date(s.last).toLocaleString('el-GR'):'συνδέθηκε'):'δεν έχει συνδεθεί';
-  $('#gdConnect').classList.toggle('hidden',!!s.on);['#gdNow','#gdList','#gdOff'].forEach(id=>$(id).classList.toggle('hidden',!s.on));
-}
-try{GD()&&GD().init({app:BK.app,folder:BK.folder,prefix:BK.prefix,payload:()=>bkStr||backupData(),t:(t,e)=>{if(e)for(const k in e)t=t.replace('{'+k+'}',e[k]);return t},toast,store:gdStore,onState:gdPaint})}catch(e){console.warn(e)}
-gdPaint();
-$('#gdConnect').onclick=async()=>{try{docsCache=await allDocs();bkStr=backupData();await GD().connect();toast('Συνδέθηκε με Google Drive')}catch(e){toast('Η σύνδεση δεν ολοκληρώθηκε')}gdPaint()};
-$('#gdNow').onclick=async()=>{try{docsCache=await allDocs();bkStr=backupData();await GD().uploadNow();toast('Ανέβηκε στο Google Drive')}catch(e){toast('Δεν ανέβηκε — έλεγξε τη σύνδεση')}gdPaint()};
-$('#gdOff').onclick=()=>{if(confirm('Αποσύνδεση από το Google Drive; Τα αντίγραφα που υπάρχουν εκεί δεν σβήνονται.')){GD().disconnect();$('#gdFiles').innerHTML='';gdPaint()}};
-$('#gdList').onclick=async()=>{
-  $('#gdFiles').innerHTML='<p class="muted">Φόρτωση…</p>';
-  try{const l=(await GD().list()).slice(0,10);
-    $('#gdFiles').innerHTML=l.length?l.map((f,i)=>`<div class="it"><div><strong>${esc(f.name.replace(BK.prefix+'-','').replace('.json',''))}</strong>${i===0?'<span class="muted">νεότερο</span>':''}</div><button class="sec" data-gd="${esc(f.id)}">Επαναφορά</button></div>`).join(''):'<p class="muted">Δεν υπάρχουν ακόμη αντίγραφα στο Drive.</p>';
-    $('#gdFiles').querySelectorAll('[data-gd]').forEach(b=>b.onclick=async()=>{try{restore(await GD().download(b.dataset.gd))}catch(e){toast('Το αρχείο δεν διαβάστηκε')}});
-  }catch(e){$('#gdFiles').innerHTML='<p class="muted">Δεν φορτώθηκε η λίστα. Έλεγξε τη σύνδεση στο διαδίκτυο.</p>'}
-};
+try{GD()&&GD().init({app:BK.app,folder:BK.folder,prefix:BK.prefix,payload:()=>bkStr||backupData(),count:t=>bkCount(t),t:(t,e)=>{if(e)for(const k in e)t=t.replace('{'+k+'}',e[k]);return t},toast,store:gdStore,onState:()=>bkUI()})}catch(e){console.warn(e)}
+bkUI();
 
 // ---------- Οι εφαρμογές μας (κοινό efarmoges-mas.js) ----------
 const EFM=()=>window.EfarmogesMas;
@@ -1350,11 +1461,11 @@ $('#instNo').onclick=()=>{LS.set('inst-later',Date.now()+7*864e5);$('#instBox').
 // ---------- Αναβάθμιση ----------
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg=>{
-    $('#bUpd').onclick=async()=>{toast('Έλεγχος…');await reg.update();if(!reg.waiting&&!reg.installing)toast('Έχεις την τελευταία έκδοση ('+VERSION+')')};
+    $('#bUpd').onclick=async()=>{toast('Έλεγχος…');await reg.update();if(!reg.waiting&&!reg.installing)toast('Έχεις την τελευταία έκδοση ('+APP_VERSION+')')};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller){toast('Νέα έκδοση — αναβάθμιση…');w.postMessage('skip')}})});
   });
   // ξαναφόρτωση μόνο όταν αντικαθίσταται παλιά έκδοση, και όχι την ώρα που φωτογραφίζεις
-  const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl&&!reloaded&&$('#cam').classList.contains('hidden')){reloaded=true;location.reload()}});
+  const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl&&!reloaded&&$('#cam').classList.contains('hidden')&&!picking()){reloaded=true;location.reload()}});
 }else $('#bUpd').onclick=()=>location.reload();
 
 // ---------- Εκκίνηση: κοινοποιημένες φωτογραφίες, συντόμευση «Νέα σάρωση» ----------
@@ -1362,7 +1473,7 @@ if('serviceWorker' in navigator){
   try{docsCache=await allDocs()}catch(e){}
   // σελίδες που έμειναν μισές (π.χ. έκλεισε η εφαρμογή στη μέση)
   for(const d of docsCache)for(const p of d.pages)if(!p.img&&p.orig)queue(d,p);
-  drawDocs();efmShow();
+  drawDocs();efmShow();fsLostCheck();
   const q=new URLSearchParams(location.search);
   if(q.has('shared')){history.replaceState(null,'',location.pathname);
     try{const c=await caches.open('glenscanner-share');const ks=await c.keys();const files=[];for(const k of ks){const r=await c.match(k);const b=await r.blob();files.push(new File([b],'foto.jpg',{type:b.type||'image/jpeg'}));await c.delete(k)}
