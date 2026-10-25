@@ -1,5 +1,5 @@
-const CACHE='glenscanner-1.2';
-const CORE=['./','index.html','manifest.json','icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png','privacy.html','G-glenapps.png','antigrafa.js','efarmoges-mas.js','grammata.ttf'];
+const CACHE='glenscanner-1.3';
+const CORE=['./','index.html','plaisio.js','manifest.json','icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png','privacy.html','G-glenapps.png','antigrafa.js','efarmoges-mas.js','grammata.ttf'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));
 self.addEventListener('message',e=>{if(e.data==='skip')self.skipWaiting()});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('glenscanner-')&&k!==CACHE&&k!=='glenscanner-lib'&&k!=='glenscanner-share').map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

@@ -2,11 +2,12 @@
 <html lang="el">
 <head>
 <meta charset="utf-8">
+<script src="plaisio.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GlenScanner</title>
 <meta name="description" content="Σαρωτής εγγράφων: κάμερα → καθαρό PDF με αναγνώριση κειμένου. Χωρίς υδατογράφημα, χωρίς λογαριασμό, χωρίς συνδρομή.">
 <meta name="theme-color" content="#FDD117">
-<meta name="app-version" content="1.2">
+<meta name="app-version" content="1.3">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -374,7 +375,7 @@ label.chk input{width:22px;height:22px;flex:none;margin-top:1px}
 <script>window.EfarmogesMas||document.write('<script src="efarmoges-mas.js"><\/script>')</script>
 <script>
 'use strict';
-const APP_VERSION='1.2';
+const APP_VERSION='1.3';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 $('#ver').textContent='GlenApps · '+APP_VERSION;$('#ver2').textContent=APP_VERSION;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
