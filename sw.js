@@ -1,4 +1,15 @@
-const CACHE='glenscanner-1.9';
+/* ΚΑΝΟΝΑΣ GlenApps (10/11/2026): η εφαρμογή ανοίγει αμέσως από τη συσκευή· δίκτυο το πολύ 3″ — ΜΗΝ αφαιρεθεί.
+   gaNet(δίκτυο, αποθήκη, συμβάν): αν το δίκτυο δεν απαντήσει σε 3″ και υπάρχει αποθηκευμένο αντίγραφο, δίνεται αυτό
+   (το δίκτυο συνεχίζει στο παρασκήνιο και ενημερώνει την αποθήκη)· μετά από καθυστέρηση, για 30″ όλα κατευθείαν από τη συσκευή.
+   Σφάλμα διακομιστή (5xx) δεν αντικαθιστά το αποθηκευμένο. Οι αναβαθμίσεις έρχονται όπως πριν (νέο όνομα αποθήκης σε κάθε έκδοση). */
+var GA_MS=3000,gaSlow=0;
+function gaNet(net,fromCache,ev){var p=Promise.resolve(net);try{ev&&ev.waitUntil&&ev.waitUntil(p.catch(function(){}))}catch(x){}
+  function fc(){try{return Promise.resolve(fromCache()).catch(function(){})}catch(x){return Promise.resolve()}}
+  if(Date.now()<gaSlow)return fc().then(function(c){return c||p});
+  return new Promise(function(ok){var done=false,t;function fin(r){if(!done){done=true;clearTimeout(t);ok(r)}}
+    t=setTimeout(function(){fc().then(function(c){if(c){gaSlow=Date.now()+30000;fin(c)}})},GA_MS);
+    p.then(function(r){if(r&&r.status>=500)fc().then(function(c){fin(c||r)});else fin(r)},function(){fc().then(function(c){fin(c||Response.error())})});});}
+const CACHE='glenscanner-1.10';
 const CORE=['./','index.html','plaisio.js','manifest.json','icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png','privacy.html','G-glenapps.png','antigrafa.js','efarmoges-mas.js','grammata.ttf','metafora-rythmisi.js','metafora-lipsi.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));
 self.addEventListener('message',e=>{if(e.data==='skip')self.skipWaiting()});
@@ -20,7 +31,7 @@ self.addEventListener('fetch',e=>{
   const u=new URL(e.request.url);
   // δική μας σελίδα: πρώτα δίκτυο (για αναβαθμίσεις), αλλιώς αποθηκευμένη
   if(u.origin===location.origin){
-    e.respondWith(Promise.race([fetch(e.request),new Promise((_,j)=>u.pathname==='/efarmoges-mas.js'&&setTimeout(j,4000))]).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html'))));
+    e.respondWith(gaNet(Promise.race([fetch(e.request),new Promise((_,j)=>u.pathname==='/efarmoges-mas.js'&&setTimeout(j,4000))]).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}),()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html')),e));
     return;
   }
   // βιβλιοθήκες και λεξικά γλώσσας: αποθήκευση για χρήση χωρίς ίντερνετ
